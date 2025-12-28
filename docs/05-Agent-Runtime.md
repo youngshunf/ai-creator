@@ -123,7 +123,7 @@ ai-creator/                              # Monorepo 根目录
 │   ├── content-creation.yaml
 │   └── publish-workflow.yaml
 │
-└── tauri-app/                           # Tauri 桌面应用
+└── apps/desktop/                        # Tauri 桌面应用
     └── src-tauri/
         └── sidecar/                     # Sidecar 二进制
 ```
@@ -193,7 +193,7 @@ build-backend = "hatchling.build"
 ```
 
 ```toml
-# apps/cloud-backend/pyproject.toml
+# services/cloud-backend/pyproject.toml
 
 [project]
 name = "ai-creator-cloud"
@@ -227,7 +227,7 @@ cd apps/sidecar
 uv run python -m sidecar.main           # 运行
 
 # 4. 开发云端（自动使用最新 agent-core）
-cd apps/cloud-backend
+cd services/cloud-backend
 uv run uvicorn backend.app.main:app     # 运行
 
 # 5. 构建 sidecar 发布包
@@ -708,7 +708,7 @@ class LocalBrowserPublishTool(ToolInterface):
 ### 3.6 云端专用工具（Backend 实现）
 
 ```python
-# apps/cloud-backend/backend/app/agent/tools/browser.py
+# services/cloud-backend/backend/app/agent/tools/browser.py
 
 from agent_core.tools.base import ToolInterface, ToolMetadata, ToolCapability, ToolResult
 from agent_core.tools.registry import ToolRegistry
@@ -966,7 +966,7 @@ class LocalExecutor(ExecutorInterface):
 ## 5. 云端执行器实现
 
 ```python
-# apps/cloud-backend/backend/app/agent/executor.py
+# services/cloud-backend/backend/app/agent/executor.py
 
 import time
 import uuid
@@ -1517,7 +1517,7 @@ cd apps/sidecar
 uv run python -m sidecar.main
 
 # 开发云端
-cd apps/cloud-backend
+cd services/cloud-backend
 uv run uvicorn backend.app.main:app --reload
 ```
 
@@ -1538,7 +1538,7 @@ uv run nuitka --standalone --onefile src/sidecar/main.py
 ### 8.3 云端部署（Docker）
 
 ```dockerfile
-# apps/cloud-backend/Dockerfile
+# services/cloud-backend/Dockerfile
 
 FROM python:3.11-slim
 
@@ -1550,7 +1550,7 @@ WORKDIR /app
 # 复制 workspace 配置
 COPY pyproject.toml uv.lock ./
 COPY packages/agent-core ./packages/agent-core
-COPY apps/cloud-backend ./apps/cloud-backend
+COPY services/cloud-backend ./services/cloud-backend
 COPY agent-definitions ./agent-definitions
 
 # 安装依赖
@@ -2512,7 +2512,7 @@ class LocalExecutor(ExecutorInterface):
 ### 10.10 云端执行器初始化示例
 
 ```python
-# apps/cloud-backend/backend/app/agent/executor.py (更新)
+# services/cloud-backend/backend/app/agent/executor.py (更新)
 
 from agent_core.llm.direct_client import DirectLLMClient
 from agent_core.llm.interface import LLMConfig
