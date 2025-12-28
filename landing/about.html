@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关于创流 - 品牌愿景 | CreatorFlow</title>
+    <meta name="description" content="创流的品牌愿景：成为每一位创作者的AI超级大脑。了解我们的使命、价值观和品牌故事。">
+    <link rel="icon" type="image/svg+xml" href="assets/logo-icon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            /* 品牌色 - 明亮版 */
+            --primary-blue: #3B82F6;
+            --primary-purple: #8B5CF6;
+            --primary-indigo: #6366F1;
+            --light-blue: #60A5FA;
+            --light-purple: #A78BFA;
+
+            /* 功能色 */
+            --accent-orange: #F97316;
+            --success-green: #10B981;
+            --error-red: #DC2626;
+            --warning-yellow: #F59E0B;
+
+            /* 中性色 */
+            --dark: #1F2937;
+            --gray: #6B7280;
+            --light-gray: #F3F4F6;
+            --white: #FFFFFF;
+
+            /* 渐变 - 明亮版 */
+            --gradient-primary: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+            --gradient-hero: linear-gradient(135deg, #4338CA 0%, #6366F1 50%, #3B82F6 100%);
+            --gradient-hero-light: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 50%, #DBEAFE 100%);
+            --gradient-light: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
+            --gradient-accent: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+
+            /* 阴影 */
+            --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.12);
+            --shadow-primary: 0 10px 30px rgba(59, 130, 246, 0.3);
+            --shadow-primary-lg: 0 20px 40px rgba(59, 130, 246, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--dark);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1rem 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+        }
+
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--gray);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--primary-blue);
+        }
+
+        .nav-cta {
+            padding: 0.6rem 1.5rem;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .nav-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 70vh;
+            background: var(--gradient-hero);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8rem 2rem 6rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.5;
+        }
+
+        .hero-content {
+            max-width: 900px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-label {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 30px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            color: var(--white);
+            line-height: 1.2;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero h1 span {
+            background: linear-gradient(135deg, #60A5FA 0%, #A78BFA 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.4rem;
+            color: rgba(255, 255, 255, 0.8);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        /* Section Styles */
+        .section {
+            padding: 6rem 2rem;
+        }
+
+        .section-container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-label {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: var(--gradient-light);
+            border-radius: 20px;
+            color: var(--primary-blue);
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 1rem;
+        }
+
+        .section-desc {
+            color: var(--gray);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Mission Section */
+        .mission {
+            background: var(--white);
+        }
+
+        .mission-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .mission-content h2 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 1.5rem;
+        }
+
+        .mission-content p {
+            color: var(--gray);
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin-bottom: 1.5rem;
+        }
+
+        .mission-points {
+            list-style: none;
+            margin-top: 2rem;
+        }
+
+        .mission-points li {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1.2rem;
+            font-size: 1.05rem;
+            color: var(--dark);
+        }
+
+        .mission-points li span {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .mission-visual {
+            position: relative;
+        }
+
+        .mission-card {
+            background: var(--gradient-primary);
+            border-radius: 24px;
+            padding: 3rem;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mission-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        }
+
+        .mission-card h3 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .mission-card p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            line-height: 1.7;
+            position: relative;
+        }
+
+        .mission-quote {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            font-style: italic;
+            font-size: 1.2rem;
+            position: relative;
+        }
+
+        /* Values Section */
+        .values {
+            background: var(--light-gray);
+        }
+
+        .values-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1.5rem;
+        }
+
+        .value-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .value-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary-blue);
+        }
+
+        .value-icon {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 1.5rem;
+            background: var(--gradient-light);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+
+        .value-card h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.8rem;
+        }
+
+        .value-card p {
+            color: var(--gray);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        /* Story Section */
+        .story {
+            background: var(--white);
+        }
+
+        .story-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .story-block {
+            position: relative;
+            padding-left: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .story-block::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--gradient-primary);
+            border-radius: 2px;
+        }
+
+        .story-block h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 1rem;
+        }
+
+        .story-block p {
+            color: var(--gray);
+            font-size: 1.1rem;
+            line-height: 1.9;
+            margin-bottom: 1rem;
+        }
+
+        .story-highlight {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+            border-left: 4px solid var(--primary-blue);
+            padding: 2rem;
+            border-radius: 0 16px 16px 0;
+            margin: 2rem 0;
+        }
+
+        .story-highlight p {
+            color: var(--dark);
+            font-size: 1.2rem;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        /* Users Section */
+        .users {
+            background: var(--light-gray);
+        }
+
+        .users-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .user-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 2.5rem;
+            transition: all 0.3s;
+        }
+
+        .user-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .user-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .user-icon.creator { background: linear-gradient(135deg, #DBEAFE 0%, #E0E7FF 100%); }
+        .user-icon.mcn { background: linear-gradient(135deg, #EDE9FE 0%, #FCE7F3 100%); }
+        .user-icon.enterprise { background: linear-gradient(135deg, #D1FAE5 0%, #CFFAFE 100%); }
+
+        .user-card h3 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .user-card .subtitle {
+            color: var(--primary-blue);
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .user-card p {
+            color: var(--gray);
+            font-size: 1rem;
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+        }
+
+        .user-needs {
+            list-style: none;
+        }
+
+        .user-needs li {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--dark);
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .user-needs li span {
+            color: var(--success-green);
+        }
+
+        /* Promise Section */
+        .promise {
+            background: var(--gradient-hero);
+            color: white;
+            text-align: center;
+        }
+
+        .promise .section-title {
+            color: white;
+        }
+
+        .promise-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .promise-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            padding: 3rem;
+            margin-top: 3rem;
+        }
+
+        .promise-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .promise-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            text-align: left;
+        }
+
+        .promise-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .promise-item span {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .promise-item p {
+            font-size: 1.05rem;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+
+        .promise-signature {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+
+        /* Timeline Section */
+        .timeline {
+            background: var(--white);
+        }
+
+        .timeline-container {
+            position: relative;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .timeline-container::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--gradient-primary);
+            transform: translateX(-50%);
+            border-radius: 2px;
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 3rem;
+        }
+
+        .timeline-item:nth-child(odd) {
+            flex-direction: row-reverse;
+        }
+
+        .timeline-content {
+            width: 45%;
+            padding: 2rem;
+            background: var(--light-gray);
+            border-radius: 16px;
+            position: relative;
+        }
+
+        .timeline-item:nth-child(odd) .timeline-content {
+            text-align: right;
+        }
+
+        .timeline-dot {
+            width: 60px;
+            height: 60px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            font-weight: 800;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: var(--shadow-primary);
+            z-index: 1;
+        }
+
+        .timeline-phase {
+            color: var(--primary-blue);
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-content h3 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.8rem;
+        }
+
+        .timeline-content p {
+            color: var(--gray);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* CTA Section */
+        .cta {
+            padding: 6rem 2rem;
+            background: var(--gradient-primary);
+            text-align: center;
+        }
+
+        .cta-container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .cta h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 1.5rem;
+        }
+
+        .cta p {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 2.5rem;
+        }
+
+        .cta .btn-white {
+            padding: 1rem 2.5rem;
+            background: white;
+            color: var(--primary-blue);
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .cta .btn-white:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Footer */
+        .footer {
+            padding: 3rem 2rem 2rem;
+            background: var(--dark);
+            color: white;
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.9rem;
+        }
+
+        .footer-bottom a {
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            margin-left: 1.5rem;
+        }
+
+        .footer-bottom a:hover {
+            color: white;
+        }
+
+        /* Lucide Icon Styles */
+        .value-icon svg {
+            width: 32px;
+            height: 32px;
+            color: var(--primary-blue);
+            stroke-width: 1.5;
+        }
+
+        .mission-points li svg {
+            width: 24px;
+            height: 24px;
+            color: var(--primary-blue);
+            flex-shrink: 0;
+            margin-top: 4px;
+        }
+
+        .user-needs li svg {
+            width: 18px;
+            height: 18px;
+            color: var(--success-green);
+            flex-shrink: 0;
+        }
+
+        .promise-item svg {
+            width: 28px;
+            height: 28px;
+            color: rgba(255, 255, 255, 0.9);
+            flex-shrink: 0;
+        }
+
+        .cta .btn-white svg {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 0.3rem;
+        }
+
+        .user-icon svg {
+            width: 40px;
+            height: 40px;
+            stroke-width: 1.5;
+        }
+
+        .user-icon.creator svg { color: var(--primary-blue); }
+        .user-icon.mcn svg { color: var(--primary-purple); }
+        .user-icon.enterprise svg { color: var(--success-green); }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .hero h1 {
+                font-size: 3rem;
+            }
+
+            .mission-grid {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+
+            .values-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .users-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .promise-list {
+                grid-template-columns: 1fr;
+            }
+
+            .timeline-container::before {
+                left: 30px;
+            }
+
+            .timeline-item,
+            .timeline-item:nth-child(odd) {
+                flex-direction: column;
+                align-items: flex-start;
+                padding-left: 80px;
+            }
+
+            .timeline-content,
+            .timeline-item:nth-child(odd) .timeline-content {
+                width: 100%;
+                text-align: left;
+            }
+
+            .timeline-dot {
+                left: 30px;
+                transform: translateX(-50%);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .hero h1 {
+                font-size: 2.2rem;
+            }
+
+            .hero p {
+                font-size: 1.1rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .values-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .values-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <div class="logo-icon"><img src="assets/logo-icon.svg" alt="创流"></div>
+                创流
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html#features">功能</a></li>
+                <li><a href="index.html#workflow">流程</a></li>
+                <li><a href="index.html#platforms">平台</a></li>
+                <li><a href="index.html#pricing">定价</a></li>
+                <li><a href="about.html" class="active">关于我们</a></li>
+            </ul>
+            <button class="nav-cta">免费试用</button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-label">🚀 品牌愿景</div>
+            <h1>成为每一位创作者的<br><span>AI 超级大脑</span></h1>
+            <p>我们相信，每个人都有表达的欲望和创作的潜力。创流的使命是消除创作的技术门槛，让创意自由流淌，让每一个声音都能被世界听见。</p>
+        </div>
+    </section>
+
+    <!-- Mission Section -->
+    <section class="section mission">
+        <div class="section-container">
+            <div class="mission-grid">
+                <div class="mission-content">
+                    <h2>用 AI 重塑内容创作的每一个环节</h2>
+                    <p>从灵感到变现，全链路赋能创作者。我们不是要替代创作者，而是要成为创作者的延伸，就像流水找到最自然的路径流向大海。</p>
+                    <ul class="mission-points">
+                        <li>
+                            <i data-lucide="target"></i>
+                            <div><strong>降低门槛</strong><br>让不会写的人能写，让会写的人写得更好</div>
+                        </li>
+                        <li>
+                            <i data-lucide="zap"></i>
+                            <div><strong>提升效率</strong><br>将创作周期从天缩短到小时，从小时缩短到分钟</div>
+                        </li>
+                        <li>
+                            <i data-lucide="globe"></i>
+                            <div><strong>打破边界</strong><br>一次创作，多平台分发，触达更广泛的受众</div>
+                        </li>
+                        <li>
+                            <i data-lucide="coins"></i>
+                            <div><strong>加速变现</strong><br>数据驱动选题，AI 优化内容，提升商业转化</div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="mission-visual">
+                    <div class="mission-card">
+                        <h3>💡 创流理念</h3>
+                        <p>好的工具应该让人专注于创作本身，而非工具的使用。AI 应该理解创作者的意图，而非让创作者适应 AI。</p>
+                        <div class="mission-quote">
+                            "让创作自然流淌——这不仅是我们的口号，更是我们的承诺。"
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Values Section -->
+    <section class="section values">
+        <div class="section-container">
+            <div class="section-header">
+                <span class="section-label">核心价值观</span>
+                <h2 class="section-title">我们相信的事</h2>
+                <p class="section-desc">这些价值观指引着我们的每一个产品决策</p>
+            </div>
+            <div class="values-grid">
+                <div class="value-card">
+                    <div class="value-icon"><i data-lucide="user"></i></div>
+                    <h3>创作者优先</h3>
+                    <p>一切产品决策以创作者体验为中心</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon"><i data-lucide="bot"></i></div>
+                    <h3>AI 赋能而非替代</h3>
+                    <p>AI 是创作者的超级助手，而非替代品</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon"><i data-lucide="shield"></i></div>
+                    <h3>安全可信赖</h3>
+                    <p>用户数据和凭证安全是不可妥协的底线</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon"><i data-lucide="sparkles"></i></div>
+                    <h3>简单即力量</h3>
+                    <p>复杂的技术，极简的体验</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon"><i data-lucide="rocket"></i></div>
+                    <h3>持续进化</h3>
+                    <p>与创作者共同成长，永不止步</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Story Section -->
+    <section class="section story">
+        <div class="section-container">
+            <div class="section-header">
+                <span class="section-label">品牌故事</span>
+                <h2 class="section-title">每一个创作者，都值得拥有一个超级大脑</h2>
+            </div>
+            <div class="story-content">
+                <div class="story-block">
+                    <h3>我们看到的矛盾</h3>
+                    <p>在这个人人都是创作者的时代，创作的门槛从未如此之低——一部手机就能开始；创作的压力也从未如此之大——算法要求你每天更新，粉丝期待你持续产出。</p>
+                </div>
+                <div class="story-block">
+                    <h3>我们遇到的创作者</h3>
+                    <p>凌晨两点还在为明天发什么而焦虑的博主；同一篇内容要手动发布到 5 个平台的运营；看着别人的爆款，不知道自己差在哪里的新人；明明有好想法，却卡在执行的琐碎里的创作者...</p>
+                </div>
+                <div class="story-highlight">
+                    <p>创流就是为解决这些问题而生。我们相信，AI 不应该替代创作者，而应该成为创作者的延伸。</p>
+                </div>
+                <div class="story-block">
+                    <h3>我们的信念</h3>
+                    <p>就像流水找到最自然的路径流向大海，创流帮助每一个想法找到最自然的方式触达受众。我们不是要成为另一个平台，而是要成为你在所有平台上的超级助手。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Users Section -->
+    <section class="section users">
+        <div class="section-container">
+            <div class="section-header">
+                <span class="section-label">目标用户</span>
+                <h2 class="section-title">我们服务的创作者</h2>
+                <p class="section-desc">从个人创作者到企业团队，创流陪伴你的每个成长阶段</p>
+            </div>
+            <div class="users-grid">
+                <div class="user-card">
+                    <div class="user-icon creator"><i data-lucide="laptop"></i></div>
+                    <h3>个人创作者</h3>
+                    <div class="subtitle">自由职业者 · 斜杠青年 · 副业创作者</div>
+                    <p>时间有限，但创作热情无限。你需要一个能帮你提效 10 倍的 AI 助手。</p>
+                    <ul class="user-needs">
+                        <li><i data-lucide="check"></i> 快速生成高质量内容</li>
+                        <li><i data-lucide="check"></i> 一键多平台发布</li>
+                        <li><i data-lucide="check"></i> 数据分析指导运营</li>
+                    </ul>
+                </div>
+                <div class="user-card">
+                    <div class="user-icon mcn"><i data-lucide="users"></i></div>
+                    <h3>MCN / 创作团队</h3>
+                    <div class="subtitle">3-50 人团队 · 多账号管理</div>
+                    <p>内容生产要标准化，团队协作要高效。你需要一个统一的工作流平台。</p>
+                    <ul class="user-needs">
+                        <li><i data-lucide="check"></i> 团队协作工作流</li>
+                        <li><i data-lucide="check"></i> 统一内容质量标准</li>
+                        <li><i data-lucide="check"></i> 多账号集中管理</li>
+                    </ul>
+                </div>
+                <div class="user-card">
+                    <div class="user-icon enterprise"><i data-lucide="building"></i></div>
+                    <h3>企业新媒体部门</h3>
+                    <div class="subtitle">品牌方 · 企业官方账号</div>
+                    <p>品牌传播要快速响应，多平台调性要统一。你需要企业级的安全与合规。</p>
+                    <ul class="user-needs">
+                        <li><i data-lucide="check"></i> 品牌调性一致性</li>
+                        <li><i data-lucide="check"></i> 审核流程集成</li>
+                        <li><i data-lucide="check"></i> 企业级安全合规</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Promise Section -->
+    <section class="section promise">
+        <div class="section-container">
+            <div class="section-header">
+                <span class="section-label" style="background: rgba(255,255,255,0.1); color: white;">品牌承诺</span>
+                <h2 class="section-title">致每一位创作者</h2>
+            </div>
+            <div class="promise-content">
+                <div class="promise-card">
+                    <h3>我们承诺，创流永远站在创作者这一边</h3>
+                    <div class="promise-list">
+                        <div class="promise-item">
+                            <i data-lucide="lock"></i>
+                            <p><strong>你的数据，属于你自己。</strong>本地加密存储，你完全掌控。</p>
+                        </div>
+                        <div class="promise-item">
+                            <i data-lucide="key"></i>
+                            <p><strong>你的账号，由你完全掌控。</strong>一键撤销，随时取消授权。</p>
+                        </div>
+                        <div class="promise-item">
+                            <i data-lucide="lightbulb"></i>
+                            <p><strong>你的创意，AI 只是助力。</strong>增强你的能力，而非替代你。</p>
+                        </div>
+                        <div class="promise-item">
+                            <i data-lucide="trophy"></i>
+                            <p><strong>你的成功，我们与有荣焉。</strong>你的爆款，是我们最大的成就。</p>
+                        </div>
+                    </div>
+                    <div class="promise-signature">
+                        让我们一起，让创作自然流淌。<br>
+                        —— 创流团队
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Timeline Section -->
+    <section class="section timeline">
+        <div class="section-container">
+            <div class="section-header">
+                <span class="section-label">发展规划</span>
+                <h2 class="section-title">我们的成长路径</h2>
+                <p class="section-desc">与创作者共同成长的每一步</p>
+            </div>
+            <div class="timeline-container">
+                <div class="timeline-item">
+                    <div class="timeline-dot">1</div>
+                    <div class="timeline-content">
+                        <div class="timeline-phase">Phase 1 · 启航</div>
+                        <h3>产品验证期</h3>
+                        <p>完成核心功能闭环，支持 5 个主流平台，服务首批 10,000 种子用户。</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot">2</div>
+                    <div class="timeline-content">
+                        <div class="timeline-phase">Phase 2 · 成长</div>
+                        <h3>规模化增长期</h3>
+                        <p>用户突破 100,000，建立创作者社区，举办首届创作者大会。</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot">3</div>
+                    <div class="timeline-content">
+                        <div class="timeline-phase">Phase 3 · 领航</div>
+                        <h3>生态构建期</h3>
+                        <p>成为行业领先的 AI 创作平台，开放平台生态，服务百万创作者。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="cta-container">
+            <h2>准备好让创作自然流淌了吗？</h2>
+            <p>加入我们，成为最早体验 AI 创作魔力的创作者</p>
+            <button class="btn-white"><i data-lucide="rocket"></i> 免费开始创作</button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-bottom">
+                <p>© 2025 创流 CreatorFlow. All rights reserved. | 让创作自然流淌</p>
+                <div>
+                    <a href="index.html">首页</a>
+                    <a href="#">隐私政策</a>
+                    <a href="#">服务条款</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>

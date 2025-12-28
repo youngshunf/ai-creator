@@ -1,0 +1,15 @@
+# ai-creator/pyproject.toml (Monorepo 根)
+# @author Ysf
+
+[project]
+name = "ai-creator-workspace"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+[tool.uv]
+# 定义 workspace 成员
+workspace = { members = ["packages/*", "apps/*"] }
+
+[tool.uv.sources]
+# 本地包源定义（所有 workspace 成员自动可用）
+agent-core = { workspace = true }

@@ -1,0 +1,35 @@
+# 数据分析 Graph 定义
+# @author Ysf
+
+name: analytics
+version: "1.0"
+description: "数据分析与洞察工作流"
+
+nodes:
+  - id: start
+    type: start
+    next: collect_data
+
+  - id: collect_data
+    type: tool
+    tool_name: data_collector
+    next: analyze_metrics
+
+  - id: analyze_metrics
+    type: llm
+    prompt: "分析数据指标，生成洞察"
+    next: generate_report
+
+  - id: generate_report
+    type: tool
+    tool_name: report_generator
+    next: end
+
+  - id: end
+    type: end
+
+tools:
+  - name: data_collector
+    description: "采集平台数据"
+  - name: report_generator
+    description: "生成分析报告"

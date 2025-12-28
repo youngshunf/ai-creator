@@ -1,0 +1,19 @@
+[package]
+name = "creatorflow-desktop"
+version = "0.1.0"
+description = "创流桌面端 - 自媒体创作者的 AI 超级大脑"
+authors = ["Ysf"]
+edition = "2021"
+
+[lib]
+name = "creatorflow_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

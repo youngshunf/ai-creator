@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 创流 Logo - 白色背景版 (适用于深色背景) -->
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="whiteGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="50%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 白色圆角矩形背景 -->
+  <rect x="16" y="16" width="168" height="168" rx="40" fill="white"/>
+
+  <!-- 主流动曲线 -->
+  <path
+    d="M50 140
+       C65 120, 75 100, 85 95
+       S105 90, 115 85
+       S140 70, 150 60"
+    stroke="url(#whiteGradient)"
+    stroke-width="10"
+    stroke-linecap="round"
+    fill="none"
+  />
+
+  <!-- 辅助流动线 -->
+  <path
+    d="M60 150
+       C75 130, 85 115, 95 108
+       S115 100, 125 93"
+    stroke="url(#whiteGradient)"
+    stroke-width="4"
+    stroke-linecap="round"
+    fill="none"
+    opacity="0.35"
+  />
+
+  <!-- 创作笔触 -->
+  <g transform="translate(55, 50)">
+    <!-- 笔尖 -->
+    <path
+      d="M0 35 L15 20 L20 25 L5 40 Z"
+      fill="url(#whiteGradient)"
+    />
+    <!-- 笔杆 -->
+    <path
+      d="M15 20 L35 0"
+      stroke="url(#whiteGradient)"
+      stroke-width="6"
+      stroke-linecap="round"
+    />
+    <!-- 笔迹 -->
+    <path
+      d="M5 40 L0 50"
+      stroke="url(#whiteGradient)"
+      stroke-width="5"
+      stroke-linecap="round"
+      opacity="0.8"
+    />
+  </g>
+
+  <!-- 灵感粒子 -->
+  <circle cx="150" cy="60" r="10" fill="url(#whiteGradient)"/>
+  <circle cx="165" cy="78" r="5" fill="url(#whiteGradient)" opacity="0.6"/>
+  <circle cx="140" cy="45" r="4" fill="url(#whiteGradient)" opacity="0.45"/>
+  <circle cx="170" cy="55" r="3" fill="url(#whiteGradient)" opacity="0.35"/>
+
+  <!-- 小粒子群 -->
+  <circle cx="155" cy="95" r="3" fill="url(#whiteGradient)" opacity="0.45"/>
+  <circle cx="168" cy="105" r="2" fill="url(#whiteGradient)" opacity="0.35"/>
+  <circle cx="175" cy="90" r="2.5" fill="url(#whiteGradient)" opacity="0.3"/>
+</svg>

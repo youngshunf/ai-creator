@@ -1,0 +1,169 @@
+/**
+ * AI 写作 Hook
+ * @author Ysf
+ */
+import { useState, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { WritingStyle, getStyleById } from '@/config/writingStyles';
+
+export interface AIWriterOptions {
+  topic: string;
+  styleId: string;
+  platform?: string;
+  keywords?: string[];
+  additionalPrompt?: string;
+}
+
+export interface AIWriterResult {
+  title: string;
+  content: string;
+  tags: string[];
+}
+
+export interface UseAIWriterReturn {
+  isGenerating: boolean;
+  progress: number;
+  error: string | null;
+  result: AIWriterResult | null;
+  generate: (options: AIWriterOptions) => Promise<AIWriterResult | null>;
+  cancel: () => void;
+  reset: () => void;
+}
+
+export function useAIWriter(): UseAIWriterReturn {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<AIWriterResult | null>(null);
+  const [abortController, setAbortController] =
+    useState<AbortController | null>(null);
+
+  const generate = useCallback(
+    async (options: AIWriterOptions): Promise<AIWriterResult | null> => {
+      const { topic, styleId, platform, keywords = [], additionalPrompt } = options;
+
+      if (!topic.trim()) {
+        setError('请输入创作主题');
+        return null;
+      }
+
+      const style = getStyleById(styleId);
+      if (!style) {
+        setError('请选择写作风格');
+        return null;
+      }
+
+      setIsGenerating(true);
+      setProgress(0);
+      setError(null);
+      setResult(null);
+
+      const controller = new AbortController();
+      setAbortController(controller);
+
+      try {
+        setProgress(10);
+
+        const prompt = buildPrompt(topic, style, platform, keywords, additionalPrompt);
+
+        setProgress(20);
+
+        const response = await invoke<{
+          success: boolean;
+          data?: AIWriterResult;
+          error?: string;
+        }>('execute_ai_writing', {
+          request: {
+            graph_name: 'content-creation',
+            inputs: {
+              topic,
+              platform: platform || style.platform[0],
+              style: styleId,
+              keywords,
+              system_prompt: style.systemPrompt,
+              user_prompt: prompt,
+            },
+            user_id: 'local_user',
+          },
+        });
+
+        setProgress(90);
+
+        if (!response.success || !response.data) {
+          throw new Error(response.error || '生成失败');
+        }
+
+        setProgress(100);
+        setResult(response.data);
+        return response.data;
+      } catch (err) {
+        if (controller.signal.aborted) {
+          setError('已取消生成');
+        } else {
+          const errorMessage =
+            err instanceof Error ? err.message : '生成失败，请重试';
+          setError(errorMessage);
+        }
+        return null;
+      } finally {
+        setIsGenerating(false);
+        setAbortController(null);
+      }
+    },
+    []
+  );
+
+  const cancel = useCallback(() => {
+    if (abortController) {
+      abortController.abort();
+    }
+  }, [abortController]);
+
+  const reset = useCallback(() => {
+    setIsGenerating(false);
+    setProgress(0);
+    setError(null);
+    setResult(null);
+  }, []);
+
+  return {
+    isGenerating,
+    progress,
+    error,
+    result,
+    generate,
+    cancel,
+    reset,
+  };
+}
+
+function buildPrompt(
+  topic: string,
+  style: WritingStyle,
+  platform?: string,
+  keywords: string[] = [],
+  additionalPrompt?: string
+): string {
+  let prompt = `请为主题「${topic}」创作一篇${style.name}风格的内容。\n\n`;
+
+  if (platform) {
+    prompt += `目标平台：${platform}\n`;
+  }
+
+  if (keywords.length > 0) {
+    prompt += `关键词：${keywords.join('、')}\n`;
+  }
+
+  if (additionalPrompt) {
+    prompt += `\n额外要求：${additionalPrompt}\n`;
+  }
+
+  prompt += `\n请按照以下格式输出：
+1. 标题（吸引眼球，符合平台特点）
+2. 正文内容（符合${style.name}风格）
+3. 推荐标签（3-5个）`;
+
+  return prompt;
+}
+
+export default useAIWriter;

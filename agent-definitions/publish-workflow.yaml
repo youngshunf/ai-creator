@@ -1,0 +1,38 @@
+# 发布工作流 Graph 定义
+# @author Ysf
+
+name: publish-workflow
+version: "1.0"
+description: "多平台发布工作流"
+
+nodes:
+  - id: start
+    type: start
+    next: validate_content
+
+  - id: validate_content
+    type: tool
+    tool_name: content_validator
+    next: format_for_platform
+
+  - id: format_for_platform
+    type: tool
+    tool_name: platform_formatter
+    next: publish
+
+  - id: publish
+    type: tool
+    tool_name: browser_publish
+    next: end
+
+  - id: end
+    type: end
+
+tools:
+  - name: content_validator
+    description: "验证内容合规性"
+  - name: platform_formatter
+    description: "适配平台格式"
+  - name: browser_publish
+    description: "浏览器自动化发布"
+    runtime_specific: true

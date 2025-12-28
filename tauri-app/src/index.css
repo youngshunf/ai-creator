@@ -1,0 +1,171 @@
+/**
+ * 全局样式 - 基于创流设计规格（精致版）
+ * @author Ysf
+ */
+
+/* 引入 Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* 字体大小基准 - 默认中等 */
+    --font-scale: 1;
+
+    /* 品牌色 */
+    --primary-blue: 59 130 246;
+    --primary-purple: 139 92 246;
+    --primary-indigo: 99 102 241;
+    --light-blue: 96 165 250;
+    --light-purple: 167 139 250;
+
+    /* 功能色 */
+    --accent-orange: 249 115 22;
+    --success-green: 16 185 129;
+    --error-red: 220 38 38;
+    --warning-yellow: 245 158 11;
+
+    /* 中性色 */
+    --slate-50: 248 250 252;
+    --slate-100: 241 245 249;
+    --slate-200: 226 232 240;
+    --slate-300: 203 213 225;
+    --slate-400: 148 163 184;
+    --slate-500: 100 116 139;
+    --slate-600: 71 85 105;
+    --slate-700: 51 65 85;
+    --slate-800: 30 41 59;
+    --slate-900: 15 23 42;
+
+    /* 渐变 */
+    --gradient-primary: linear-gradient(135deg, rgb(var(--primary-blue)) 0%, rgb(var(--primary-purple)) 100%);
+    --gradient-text-bright: linear-gradient(135deg, rgb(var(--primary-blue)) 0%, rgb(var(--primary-purple)) 100%);
+
+    /* 阴影 */
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+    --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
+    --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+    --shadow-primary: 0 4px 14px rgba(59, 130, 246, 0.25);
+
+    /* 圆角 */
+    --radius: 0.5rem;
+
+    /* shadcn/ui 兼容 */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+  }
+
+  /* 字体大小：小 */
+  html.font-size-small {
+    font-size: 15px;
+  }
+
+  /* 字体大小：中（默认） */
+  html.font-size-medium {
+    font-size: 16px;
+  }
+
+  /* 字体大小：大 */
+  html.font-size-large {
+    font-size: 18px;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    letter-spacing: -0.011em;
+  }
+
+  /* 中文字体优化 */
+  :lang(zh), :lang(zh-CN), :lang(zh-Hans) {
+    font-family: 'Inter', 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+    letter-spacing: 0.02em;
+  }
+
+  /* 标题字体优化 */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    color: rgb(var(--slate-900));
+  }
+
+  /* 段落优化 */
+  p {
+    color: rgb(var(--slate-600));
+    line-height: 1.625;
+  }
+}
+
+@layer utilities {
+  /* 渐变背景 */
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  /* 渐变文字 */
+  .gradient-text {
+    background: var(--gradient-text-bright);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* 品牌阴影 */
+  .shadow-brand {
+    box-shadow: var(--shadow-primary);
+  }
+
+  /* 玻璃效果 */
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}

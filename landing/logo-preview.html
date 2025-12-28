@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创流 Logo 设计预览</title>
+    <link rel="icon" type="image/svg+xml" href="assets/logo-icon.svg">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* 品牌色 - 明亮版 */
+            --primary-blue: #3B82F6;
+            --primary-purple: #8B5CF6;
+            --primary-indigo: #6366F1;
+            --light-blue: #60A5FA;
+            --light-purple: #A78BFA;
+
+            /* 中性色 */
+            --dark: #1F2937;
+            --gray: #6B7280;
+            --light-gray: #F3F4F6;
+
+            /* 渐变 */
+            --gradient-primary: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+            --gradient-hero: linear-gradient(135deg, #4338CA 0%, #6366F1 50%, #3B82F6 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: var(--light-gray);
+            color: var(--dark);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--gray);
+            margin-bottom: 3rem;
+        }
+
+        .logo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .logo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .logo-card h3 {
+            font-size: 1.1rem;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .logo-card .description {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-bottom: 1.5rem;
+        }
+
+        .logo-preview {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            border-radius: 12px;
+            min-height: 200px;
+        }
+
+        .logo-preview.light {
+            background: white;
+            border: 1px solid var(--light-gray);
+        }
+
+        .logo-preview.dark {
+            background: var(--gradient-hero);
+        }
+
+        .logo-preview img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .logo-info {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--light-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-info .file-name {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--gray);
+            background: var(--light-gray);
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+        }
+
+        .logo-info .size {
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+
+        .design-notes {
+            max-width: 800px;
+            margin: 3rem auto;
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .design-notes h2 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+
+        .design-notes ul {
+            color: var(--gray);
+            padding-left: 1.5rem;
+        }
+
+        .design-notes li {
+            margin-bottom: 0.5rem;
+        }
+
+        .color-palette {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .color-swatch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .color-swatch .swatch {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .color-swatch .hex {
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        .color-swatch .name {
+            font-size: 0.85rem;
+            color: var(--dark);
+        }
+
+        .horizontal-preview {
+            background: white;
+            border: 1px solid var(--light-gray);
+            border-radius: 12px;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+<body>
+    <h1>创流 CreatorFlow</h1>
+    <p class="subtitle">品牌 Logo 设计方案</p>
+
+    <div class="logo-grid">
+        <!-- 精细版 Logo -->
+        <div class="logo-card">
+            <h3>主 Logo (精细版)</h3>
+            <p class="description">融合"创"与"流"的完整表达，适用于品牌主视觉</p>
+            <div class="logo-preview light">
+                <img src="assets/logo-refined.svg" alt="创流 Logo 精细版" width="180">
+            </div>
+            <div class="logo-info">
+                <span class="file-name">logo-refined.svg</span>
+                <span class="size">200×200</span>
+            </div>
+        </div>
+
+        <!-- 白色背景版 -->
+        <div class="logo-card">
+            <h3>白色背景版</h3>
+            <p class="description">适用于深色背景的白底版本</p>
+            <div class="logo-preview dark">
+                <img src="assets/logo-white.svg" alt="创流 Logo 白底版" width="180">
+            </div>
+            <div class="logo-info">
+                <span class="file-name">logo-white.svg</span>
+                <span class="size">200×200</span>
+            </div>
+        </div>
+
+        <!-- 图标版 -->
+        <div class="logo-card">
+            <h3>图标版 (Favicon/App Icon)</h3>
+            <p class="description">小尺寸图标，适用于 favicon、App 图标</p>
+            <div class="logo-preview light">
+                <img src="assets/logo-icon.svg" alt="创流 Logo 图标版" width="64">
+            </div>
+            <div class="logo-info">
+                <span class="file-name">logo-icon.svg</span>
+                <span class="size">64×64</span>
+            </div>
+        </div>
+
+        <!-- 横版 -->
+        <div class="logo-card full-width">
+            <h3>横版 Logo (图标+名称)</h3>
+            <p class="description">适用于网站头部、文档等场景</p>
+            <div class="horizontal-preview">
+                <img src="assets/logo-horizontal.svg" alt="创流 Logo 横版" width="280">
+            </div>
+            <div class="logo-info">
+                <span class="file-name">logo-horizontal.svg</span>
+                <span class="size">280×64</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="design-notes">
+        <h2>设计说明</h2>
+        <ul>
+            <li><strong>「流」的意象</strong>：流动的曲线代表内容创作的流畅过程，从创意到发布一气呵成</li>
+            <li><strong>「创」的表达</strong>：笔触元素代表创作行为，向上的笔杆象征创意的诞生</li>
+            <li><strong>灵感粒子</strong>：散落的光点代表 AI 赋能和灵感火花，暗示内容分发到多平台</li>
+            <li><strong>渐变色彩</strong>：从创流蓝到创流紫的渐变，体现科技感与创意的融合</li>
+            <li><strong>圆角矩形</strong>：现代、友好的视觉风格，符合主流应用图标设计趋势</li>
+        </ul>
+
+        <h2 style="margin-top: 2rem;">品牌色板</h2>
+        <div class="color-palette">
+            <div class="color-swatch">
+                <div class="swatch" style="background: #3B82F6;"></div>
+                <span class="name">创流蓝</span>
+                <span class="hex">#3B82F6</span>
+            </div>
+            <div class="color-swatch">
+                <div class="swatch" style="background: #8B5CF6;"></div>
+                <span class="name">创流紫</span>
+                <span class="hex">#8B5CF6</span>
+            </div>
+            <div class="color-swatch">
+                <div class="swatch" style="background: #6366F1;"></div>
+                <span class="name">活力靛</span>
+                <span class="hex">#6366F1</span>
+            </div>
+            <div class="color-swatch">
+                <div class="swatch" style="background: linear-gradient(135deg, #3B82F6, #8B5CF6);"></div>
+                <span class="name">渐变</span>
+                <span class="hex">蓝→紫</span>
+            </div>
+            <div class="color-swatch">
+                <div class="swatch" style="background: #F97316;"></div>
+                <span class="name">活力橙</span>
+                <span class="hex">#F97316</span>
+            </div>
+            <div class="color-swatch">
+                <div class="swatch" style="background: #10B981;"></div>
+                <span class="name">成功绿</span>
+                <span class="hex">#10B981</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

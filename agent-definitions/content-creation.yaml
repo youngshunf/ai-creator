@@ -1,0 +1,87 @@
+# 内容创作 Graph 定义
+# @author Ysf
+
+apiVersion: agent/v1
+kind: Graph
+metadata:
+  name: content-creation
+  version: "1.0.0"
+  description: "AI 内容创作工作流"
+  author: "Ysf"
+  tags: ["content", "creation", "ai"]
+
+spec:
+  # 输入参数
+  inputs:
+    topic:
+      type: string
+      required: true
+      description: "文章主题"
+
+    style:
+      type: string
+      required: false
+      default: "professional"
+      description: "写作风格"
+
+    max_length:
+      type: integer
+      required: false
+      default: 2000
+      description: "最大字数"
+
+  # 状态变量
+  state:
+    outline:
+      type: string
+      description: "文章大纲"
+
+    content:
+      type: string
+      description: "文章正文"
+
+  # 节点定义
+  nodes:
+    - name: generate_outline
+      tool: llm_generate
+      params:
+        prompt: "为主题「${inputs.topic}」生成文章大纲，风格：${inputs.style}"
+        model: "${runtime.model_fast}"
+        max_tokens: 1000
+      outputs:
+        outline: "$.content"
+
+    - name: generate_content
+      tool: llm_generate
+      params:
+        prompt: |
+          基于以下大纲撰写文章：
+          ${state.outline}
+
+          要求：
+          - 风格：${inputs.style}
+          - 最大字数：${inputs.max_length}
+        model: "${runtime.model_default}"
+        max_tokens: 4000
+      outputs:
+        content: "$.content"
+
+  # 边定义
+  edges:
+    - from: START
+      to: generate_outline
+
+    - from: generate_outline
+      to: generate_content
+
+    - from: generate_content
+      to: END
+
+  # 输出定义
+  outputs:
+    final_content: "${state.content}"
+    outline: "${state.outline}"
+    metadata:
+      topic: "${inputs.topic}"
+      style: "${inputs.style}"
+

@@ -1,0 +1,38 @@
+# 爆款内容 Graph 定义
+# @author Ysf
+
+name: viral-content
+version: "1.0"
+description: "爆款内容创作工作流"
+
+nodes:
+  - id: start
+    type: start
+    next: analyze_trends
+
+  - id: analyze_trends
+    type: tool
+    tool_name: bettafish_analyzer
+    next: generate_ideas
+
+  - id: generate_ideas
+    type: llm
+    prompt: "基于热点趋势生成内容创意"
+    next: select_best_idea
+
+  - id: select_best_idea
+    type: human
+    prompt: "请选择最佳创意"
+    next: create_content
+
+  - id: create_content
+    type: llm
+    prompt: "创作爆款内容"
+    next: end
+
+  - id: end
+    type: end
+
+tools:
+  - name: bettafish_analyzer
+    description: "BettaFish 热点分析"
