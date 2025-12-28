@@ -1,0 +1,15 @@
+[submodule "services/cloud-backend"]
+	path = services/cloud-backend
+	url = git@github.com:youngshunf/ai-clound-backend.git
+[submodule "services/cloud-frontend"]
+	path = services/cloud-frontend
+	url = git@github.com:youngshunf/ai-clound-frontend.git
+[submodule "services/new-api"]
+	path = services/new-api
+	url = git@github.com:QuantumNous/new-api.git
+[submodule "external/BettaFish"]
+	path = external/BettaFish
+	url = git@github.com:666ghj/BettaFish.git
+[submodule "external/MiroFish"]
+	path = external/MiroFish
+	url = git@github.com:666ghj/MiroFish.git
