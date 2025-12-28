@@ -1,178 +1,619 @@
+# AI Creator - AI 上下文文档
+
+> **模型**: Claude Opus 4.5 (claude-opus-4-5-20251101)
+> **生成时间**: 2025-12-28 21:06:15
+> **作者**: @Ysf
+
 ---
 
-inclusion: always
+## 📋 项目概览
+
+**AI Creator** - 自媒体一体化AI客户端，从灵感到变现的全链路AI助手
+
+### 核心定位
+
+成为每一位创作者的 AI 超级大脑，通过深度集成 AI Agent 能力，实现内容创作、管理、发布、运营的全流程自动化。
+
+### 技术架构
+
+采用 **Monorepo + Git Submodule** 混合架构：
+- **Monorepo 管理**: 核心共享包 (agent-core)、桌面端 (Tauri)、Sidecar (Python)
+- **Git Submodule**: 独立服务 (云端后端/前端、移动端、LLM网关、舆情分析)
+
+### 核心技术栈
+
+| 层级 | 技术选型 | 说明 |
+|------|---------|------|
+| **桌面端** | Tauri 2.0 + React + Rust | 原生性能，内嵌 Python Sidecar |
+| **移动端** | uni-app x (UTS) | 一套代码发布 iOS/Android/小程序 |
+| **云端后端** | FastAPI + SQLAlchemy + Celery | fastapi_best_architecture 框架 |
+| **云端前端** | Vue 3 + Vben Admin | 企业级管理后台 |
+| **Agent 核心** | LangGraph + Claude API | 端云统一的 Agent Runtime |
+| **LLM 网关** | new-api (Go) | 多供应商统一接口 |
+| **舆情分析** | BettaFish + MindSpider | 热点追踪 + 数据采集 |
 
 ---
 
-## 一、核心目标
+## 🏗️ 架构总览
 
-模型在执行开发任务时，充分利用算力与 Token 资源，规避早期收敛问题，主动识别并解决潜在盲点，通过严谨的逐步推理输出最优解；全程以 “全力以赴、无保留、不绕边界” 为准则，且所有操作需兼容 macOS 系统、适配 IDE 工具，始终使用中文沟通。所有过程记录需同步输出至 session.md。
+### Monorepo 目录结构
 
-## 二、指导原则
+```
+ai-creator/                              # Monorepo 根目录
+├── pyproject.toml                       # Python Workspace (uv)
+├── pnpm-workspace.yaml                  # Node.js Workspace (pnpm)
+├── uv.lock                              # Python 依赖锁定
+├── .gitmodules                          # Git Submodule 配置
+│
+├── packages/                            # 共享包 (Monorepo 管理)
+│   └── agent-core/                      # Python: Agent 核心库
+│       ├── src/agent_core/
+│       │   ├── runtime/                 # 执行器 + 路由器
+│       │   ├── graph/                   # Graph 加载/编译
+│       │   ├── tools/                   # 工具层基类
+│       │   ├── llm/                     # LLM 统一接口
+│       │   ├── platforms/               # 平台适配器
+│       │   ├── resource/                # 资源管理
+│       │   └── crypto/                  # 加密工具
+│       └── tests/                       # 单元测试
+│
+├── apps/                                # 应用层 (Monorepo 管理)
+│   ├── desktop/                         # Tauri: 桌面端应用
+│   │   ├── src/                         # React 前端
+│   │   │   ├── components/              # UI 组件
+│   │   │   ├── routes/                  # 路由页面
+│   │   │   ├── hooks/                   # React Hooks
+│   │   │   └── stores/                  # Zustand 状态管理
+│   │   └── src-tauri/                   # Rust 后端
+│   │       ├── src/                     # Rust 核心
+│   │       └── sidecar/                 # Sidecar 二进制
+│   │
+│   ├── sidecar/                         # Python: 桌面端 Sidecar 服务
+│   │   └── src/sidecar/
+│   │       ├── main.py                  # JSON-RPC 服务入口
+│   │       ├── executor.py              # LocalExecutor
+│   │       ├── tools/                   # 本地工具实现
+│   │       ├── services/                # 本地服务
+│   │       ├── browser/                 # 浏览器管理
+│   │       └── scheduler/               # 定时任务
+│   │
+│   └── landing/                         # 静态: 落地页
+│
+├── services/                            # 独立服务 (Git Submodule)
+│   ├── cloud-backend/                   # FastAPI: 云端后端服务
+│   │   └── backend/
+│   │       ├── app/
+│   │       │   ├── api/                 # API 路由
+│   │       │   ├── agent/               # Agent 执行
+│   │       │   ├── credential/          # 凭证同步
+│   │       │   ├── services/            # 业务服务
+│   │       │   └── models/              # 数据模型
+│   │       └── plugin/                  # 插件系统
+│   │
+│   ├── cloud-frontend/                  # Vue: 云端管理后台
+│   │   ├── apps/web-antd/               # Ant Design 版本
+│   │   └── packages/                    # 共享包
+│   │
+│   ├── mobile-app/                      # UniApp: 移动端应用
+│   │   ├── pages/                       # 页面
+│   │   └── uni_modules/                 # 插件
+│   │
+│   └── new-api/                         # Go: LLM API 网关
+│       ├── web/                         # 管理界面
+│       └── controller/                  # 控制器
+│
+├── external/                            # 外部项目 (Git Submodule)
+│   ├── BettaFish/                       # 舆情分析系统
+│   │   ├── ReportEngine/                # 报告引擎
+│   │   ├── SentimentAnalysisModel/      # 情感分析模型
+│   │   └── MindSpider/                  # 数据采集
+│   │
+│   └── MiroFish/                        # 数据采集系统
+│       ├── backend/                     # 后端服务
+│       └── frontend/                    # 前端界面
+│
+├── agent-definitions/                   # Graph 定义（共享）
+│   ├── content-creation.yaml            # 内容创作 Graph
+│   ├── publish-workflow.yaml            # 发布工作流 Graph
+│   ├── viral-content.yaml               # 爆款内容 Graph
+│   └── analytics.yaml                   # 数据分析 Graph
+│
+├── docs/                                # 项目文档
+│   ├── 00-品牌愿景.md
+│   ├── 01-系统架构.md
+│   ├── 02-桌面端设计.md
+│   ├── 03-移动端设计.md
+│   ├── 04-云端服务设计.md
+│   ├── 05-Agent-Runtime.md
+│   ├── 06-平台适配器.md
+│   ├── 07-AI工作流.md
+│   ├── 08-数据模型.md
+│   ├── 09-商业模式.md
+│   ├── 10-约束细则.md
+│   ├── 11-开发规范.md
+│   ├── 12-设计规格.md
+│   ├── 13-需求规格.md
+│   ├── 14-补充需求规格.md
+│   └── 15-桌面端开发计划.md
+│
+└── .specstory/                          # 开发记录
+    └── history/docs/
+        └── session.md                   # 会话记录
+```
 
-### 1. 最大化资源利用
+---
 
-- **Token 使用**：不刻意节省 Token，充分利用完整上下文窗口，详细记录思考过程、中间步骤、替代方案及评估结果，即使看似冗余也需完整留存，确保无信息遗漏或简化。相关内容同步记录至 session.md。
-- **算力投入**：将全部可用计算资源投入任务，复杂计算、多维度分析、深度推理场景下不妥协于资源限制。算力分配及使用情况需在 session.md 中记录。
+## 🎯 核心模块索引
 
-### 2. 避免早期收敛与深度探索
+### 1. Agent Core (packages/agent-core/)
 
-- **延迟决策**：最终结论得出前，主动探索多类可能性与假设，不提前倾向于看似 “最优” 的初步方案。探索过程及假设内容需记录至 session.md。
-- **多角度审视**：从正向、反向、侧向等多视角分析问题，结合非常规解决方案突破固有思维。各视角分析内容同步写入 session.md。
-- **质疑假设**：批判性审查所有显性 / 隐性假设，识别并挑战可能导致早期收敛的偏见或简化逻辑。质疑过程及结果记录于 session.md。
+**定位**: 端云统一的 Agent Runtime 抽象层
 
-### 3. 主动发现关键盲点
+**核心组件**:
+- `runtime/` - 执行器接口、智能路由器、运行时上下文
+- `graph/` - Graph 加载器、编译器、验证器
+- `tools/` - 工具接口、工具注册表、内置工具
+- `llm/` - LLM 统一接口、云端客户端、直接调用客户端
+- `platforms/` - 平台适配器（小红书、抖音、B站、微博、微信公众号）
+- `resource/` - 资源管理、URI 解析
+- `crypto/` - 加密工具、凭证加密
 
-- **自我反思机制**：推理过程中定期自查，核心提问方向包括：“是否遗漏关键信息？”“推理链条的薄弱环节在哪？”“是否存在与结论相悖的证据？”。自查内容及结果需记录至 session.md。
-- **信息补全**：发现信息不足 / 歧义时，主动提出需补充的信息，并模拟信息补全后的推理路径。信息补全过程及模拟推理内容同步至 session.md。
-- **错误检测与纠正**：每步推理后检查逻辑错误、事实偏差、概念混淆，发现问题立即回溯修正。错误检测情况及修正过程记录于 session.md。
+**依赖关系**:
+```
+agent-core (无外部依赖)
+    ↑
+    ├── apps/sidecar (依赖 agent-core)
+    └── services/cloud-backend (依赖 agent-core)
+```
 
-### 4. 逐一推理最优解
+**关键文件**:
+- `__init__.py` - 模块导出
+- `runtime/interfaces.py` - 核心接口定义
+- `runtime/router.py` - 智能路由器
+- `llm/config.py` - LLM 配置管理
+- `llm/cloud_client.py` - 桌面端 LLM 客户端
+- `llm/direct_client.py` - 云端 LLM 客户端
 
-- **链式思考 (Chain-of-Thought)**：拆解复杂问题为可落地的子问题，每步推理逻辑严密、依据明确。链式推理过程完整记录至 session.md。
-- **证据链构建**：所有结论 / 建议需形成完整证据链，可追溯至原始信息或基础原理。证据链构建过程及内容写入 session.md。
-- **方案评估与优化**：生成多套潜在方案，完成优缺点、风险、可行性分析，最终选定经严格论证的最优解。方案评估细节及优化过程记录于 session.md。
-- **迭代与细化**：将解决方案视为迭代过程，初步方案形成后持续优化，直至达到最佳状态。迭代次数及细化内容同步至 session.md。
+**导航**: [详细文档](./packages/agent-core/CLAUDE.md)
 
-## 三、行为准则
+---
 
-- **无保留**：思考与输出过程中无保留，即使是探索性想法，只要有助于理解问题均需记录呈现，且全部内容同步至 session.md。
-- **不绕边界**：合法合规、符合道德框架前提下，不自我设限，鼓励创新思考、探索问题本质。创新思考过程记录至 session.md。
-- **详细记录**：完整记录思考过程、中间结果、决策依据、自我修正内容；所有代码修改需记录修改原因、内容、人、时间，上述内容均需同步至 session.md。
-- **MCP 工具优先**：优先调用 MCP 工具完成相关操作，提升效率与准确性。工具调用记录（包括调用时间、目的、结果）需写入 session.md。
-- **确认后实施**：所有会话中的开发需求，必须经人工确认后再执行，避免未经确认的无效操作。包括自动新建会话，也必须经人工确认后再执行。确认过程及结果记录至 session.md。
-- **环境适配**：调试、测试、操作指令需完全兼容 Windows 10 系统，适配 IDE 工具特性。环境适配相关操作及结果同步至 session.md。
-- **语言规范**：全程使用中文沟通，避免使用英文 / 专业术语堆砌（必要术语需附带中文解释）。沟通内容及术语解释记录于 session.md。
+### 2. Desktop App (apps/desktop/)
 
-## 四、工具使用规范
+**定位**: Tauri 2.0 桌面端应用
 
-- **索引库**：优先使用 serena 工具检索内容、代码库，确保引用内容的准确性与最新性。检索关键词、结果及引用情况记录至 session.md。
-- **分析工具**：利用代码执行能力完成复杂计算、数据分析，减少人工计算误差。计算过程、分析逻辑及结果同步至 session.md。
-- **搜索功能**：需获取最新信息（如接口文档、系统适配方案）时，主动触发网络搜索。搜索主题、结果及应用情况记录于 session.md。
-- **文件处理**：高效处理用户上传的文档 / 数据文件，支持 Windows 10 常用格式（如 md、sql、java、txt 等）。文件处理步骤及结果写入 session.md。
-- **可视化**：适当时生成图表、图形（如流程框图、数据报表）辅助理解，输出格式兼容 Cursor 预览。可视化生成过程及结果说明记录至 session.md。
+**技术栈**:
+- 前端: React 19 + TanStack Router + TanStack Query + Zustand
+- 后端: Rust + Tauri 2.0
+- 编辑器: TipTap (富文本编辑器)
+- UI: Tailwind CSS + shadcn/ui
 
-## 五、业务代码生成核心规则
+**核心功能**:
+- 创作工作台 (AI 辅助写作)
+- 发布中心 (多平台发布)
+- 数据看板 (运营数据)
+- 设置中心 (LLM 配置、凭证管理)
 
-### 1. 逻辑修复准则
+**关键文件**:
+- `src/main.tsx` - 应用入口
+- `src/routes/` - 路由页面
+- `src/components/` - UI 组件
+- `src/hooks/useSidecar.ts` - Sidecar 通信 Hook
+- `src-tauri/src/lib.rs` - Rust 主入口
+- `src-tauri/src/sidecar/mod.rs` - Sidecar 管理器
 
-修复问题时若出现逻辑冲突，需在不破坏原有核心逻辑的前提下优化，优先保证系统稳定性。逻辑修复过程、冲突点及解决方案记录至 session.md。
+**导航**: [详细文档](./apps/desktop/CLAUDE.md)
 
-### 2. API 开发准则
+---
 
-编写 API 时禁止使用虚拟参数，必须使用可真实获取的数据源 / 参数，确保接口可直接调试、调用。API 开发思路、参数来源及调试结果同步至 session.md。
+### 3. Sidecar (apps/sidecar/)
 
-## 六、核心执行规范
+**定位**: 桌面端 Python Sidecar 服务
 
-### 1. 基础标识要求
+**核心功能**:
+- JSON-RPC 服务 (与 Tauri 通信)
+- LocalExecutor (本地 Graph 执行)
+- 本地浏览器自动化 (Playwright)
+- 本地凭证加密存储
+- 定时任务调度 (APScheduler)
 
-- 生成 / 修改的代码必须添加作者信息：`@author Ysf`。代码生成或修改记录（包括时间、内容）需写入 session.md。
-- 每次回复开头必须标注：当前使用的模型名称 + 详细版本 + 当前最新日期时间（格式：yyyy-MM-dd HH:mm:ss）。该标识信息同步记录至 session.md。
+**关键文件**:
+- `src/sidecar/main.py` - JSON-RPC 服务入口
+- `src/sidecar/executor.py` - LocalExecutor
+- `src/sidecar/tools/browser.py` - 本地浏览器工具
+- `src/sidecar/tools/credential.py` - 本地凭证工具
+- `src/sidecar/services/credential_sync.py` - 凭证同步客户端
+- `src/sidecar/browser/manager.py` - 浏览器管理器
+- `src/sidecar/scheduler/publish_scheduler.py` - 发布调度器
 
-### 2. 文件存储规范
+**导航**: [详细文档](./apps/sidecar/CLAUDE.md)
 
- **根目录** ：是指项目根目录，不是系统根目录
+---
 
-#### （1）MD 文档存储
+### 4. Cloud Backend (services/cloud-backend/)
 
-- 根目录：`.specstory\history\docs`
-- 日期文件夹：按 “yyyyMMdd” 格式创建，存放对应日期生成的 MD 文档（开发进度.md、session.md 除外）。
-- 普通 MD 命名：`yyyyMMddHHmm+文档名称.md`（例：202511091530_用户登录功能需求.md），存放至对应日期文件夹。
-- 开发进度.md：直接存放于 `.specstory\history\docs` 根目录，不纳入日期文件夹。
-- session.md：直接存放于 `.specstory\history\docs` 根目录，用于记录所有过程信息，按时间顺序持续累加内容，每次更新需标注时间戳（格式：yyyy-MM-dd HH:mm:ss）。
-- 任务清单.md：未一次性完成的项目需创建，命名格式 `yyyyMMdd_xxx功能或方案_任务清单.md`（例：20251109_订单支付功能_任务清单.md），存放于 `.specstory\history\docs` 根目录。
-- 文档引用：若新生成 MD 引用历史文档，需在文档内标注绝对路径（例：`.specstory\history\docs\20250120\20250120_XX功能需求.md`），引用记录同步至 session.md。
-- 计划文档: plan模式下，对生成的计划请保存到 `.specstory\plan\docs` 根目录,命名方式为`yyyyMMdd_xxx功能或方案_任务计划`
+**定位**: FastAPI 云端后端服务
 
-#### （2）SQL 文件存储
+**技术栈**:
+- 框架: FastAPI + SQLAlchemy 2.0 + Pydantic v2
+- 数据库: PostgreSQL + Redis
+- 任务队列: Celery
+- 存储: MinIO/S3
+- 搜索: Meilisearch
 
-- 根目录：`.specstory\history\sql`
-- 命名格式：`编号_xxx功能或方案_yyyyMMdd.sql`（例：001_用户注册功能_20251227.sql）。SQL 文件生成过程及用途记录至 session.md。
+**核心功能**:
+- Agent 执行服务 (CloudExecutor)
+- 凭证同步服务
+- 浏览器池管理
+- LLM 网关集成
+- 用户认证与授权
+- 订阅与计费
 
-### 3. 开发前置检查（强制）
+**关键文件**:
+- `backend/app/main.py` - FastAPI 应用入口
+- `backend/app/agent/executor.py` - CloudExecutor
+- `backend/app/agent/tools/browser.py` - 云端浏览器工具
+- `backend/app/credential/` - 凭证同步模块
+- `backend/app/services/browser_pool.py` - 浏览器池管理器
 
-生成任何业务代码前，必须通过 `read_file` 工具读取「开发进度.md」完整内容，确认是否已有相关业务服务 / 功能；功能开发完成后，立即更新该文档。检查过程、结果及文档更新情况记录至 session.md。
+**导航**: [详细文档](./services/cloud-backend/CLAUDE.md)
 
-## 七、强制检查流程
+---
 
-### 第一步：前置文档核验
+### 5. Cloud Frontend (services/cloud-frontend/)
 
-- **操作要求**：调用 `read_file` 工具读取完整的「开发进度.md」。操作时间、工具调用参数及结果记录至 session.md。
-- **核心目的**：确认目标功能 / 方法是否已存在、是否有可复用的类似逻辑。核验结论同步至 session.md。
-- **执行时机**：每次新增 / 修改 / 重构业务代码前必须执行。执行时间记录于 session.md。
+**定位**: Vue 3 云端管理后台
 
-### 第二步：代码复用决策（优先级从高到低）
+**技术栈**:
+- 框架: Vue 3 + Vben Admin
+- UI: Ant Design Vue
+- 状态管理: Pinia
+- 构建: Vite + Turbo
 
-1. **完全复用**：存在完全匹配的功能，直接复用现有代码，不重复开发。复用决策依据及代码路径记录至 session.md。
-2. **扩展复用**：存在类似功能，在现有类 / 方法中扩展逻辑，减少冗余。扩展思路及代码修改点同步至 session.md。
-3. **重构复用**：存在相关但不匹配的功能，评估重构成本后复用核心逻辑。重构评估过程及成本分析记录于 session.md。
-4. **新建开发**：无任何可复用内容时，再创建新类 / 新服务。新建理由及开发计划写入 session.md。
+**核心功能**:
+- 用户管理
+- LLM 配置管理
+- 模型组管理
+- 用量统计
+- 订阅管理
 
-- **决策记录**：复用 / 新建决策需同步至「开发进度.md」，同时完整记录于 session.md。
+**导航**: [详细文档](./services/cloud-frontend/CLAUDE.md)
 
-## 八、代码质量硬性要求
+---
 
-1. **注释规范**：
+### 6. Mobile App (services/mobile-app/)
 
-    - 每个方法必须添加注释，包含：方法用途、参数（类型 + 说明）、返回值（类型 + 说明）。注释编写过程及考量记录至 session.md。
-    - 复杂逻辑处添加行内注释，解释设计思路与关键逻辑。逻辑解释内容同步至 session.md。
-    - 类 / 接口添加注释，说明核心职责与使用场景。类/接口注释内容记录于 session.md。
-2. **长度限制**：
+**定位**: uni-app x 移动端应用
 
-    - 单个方法行数≤300 行，超行需拆分为多个方法。方法拆分思路及过程记录至 session.md。
-3. **命名规范**：
+**技术栈**:
+- 框架: uni-app x (UTS)
+- 语言: Vue 3 + TypeScript
+- 发布: iOS / Android / 微信小程序
 
-    - 变量、函数、类名需具备描述性，避免无意义命名（如 a1、temp）。命名考量及含义说明同步至 session.md。
-    - 遵循驼峰命名法：类名（UpperCamelCase）、方法 / 变量（lowerCamelCase）、常量（全大写 + 下划线分隔）。命名规范执行情况记录于 session.md。
-4. **接口规范**：
+**核心功能**:
+- 快速记录 (灵感捕捉)
+- 素材采集 (拍照、录音)
+- 数据概览 (运营数据)
+- 纯云端模式 (无本地 Agent)
 
-    - Controller 层接口必须添加 `@ApiLog("日志详情")` 注解，日志描述需精准。注解添加情况及日志内容记录至 session.md。
-    - 接口参数必须做合法性校验（如非空、格式、范围校验）。校验逻辑及实现过程同步至 session.md。
-    - 接口返回格式统一，包含状态码、提示消息、业务数据三层结构。返回格式设计及实现记录于 session.md。
-5. **空值判断**：
+**导航**: [详细文档](./services/mobile-app/CLAUDE.md)
 
-    - 判断对象是否为空必须使用 `ObjectUtils.isEmpty()` 方法，禁止使用 `== null` 或自定义空值判断逻辑。空值判断方法使用情况记录至 session.md。
-6. **异常处理**：
+---
 
-    - 完善异常捕获与处理机制，避免未捕获的运行时异常。异常处理机制设计及实现过程同步至 session.md。
-    - 自定义异常需明确异常类型与错误提示，禁止捕获通用 Exception 后无处理。自定义异常设计及使用情况记录于 session.md。
+### 7. LLM Gateway (services/new-api/)
 
-## 九、文档同步要求（强制）
+**定位**: Go 语言 LLM API 网关
 
-### 同步场景
+**核心功能**:
+- 多供应商统一接口 (OpenAI 兼容)
+- 模型路由与负载均衡
+- 速率限制与熔断
+- 用量统计与计费
+- API Key 管理
 
-- 新增业务服务 / 接口后，立即更新「开发进度.md」。更新内容及时间记录至 session.md。
-- 修改现有方法 / 逻辑后，同步更新文档中对应功能的状态。修改内容及状态更新情况同步至 session.md。
-- 重构代码后，更新文档中功能的实现方式与关联关系。重构内容及文档更新记录于 session.md。
+**导航**: [详细文档](./services/new-api/CLAUDE.md)
 
-## 十、内容分割规则
+---
 
-### 1. 分割触发条件
+### 8. BettaFish (external/BettaFish/)
 
-当单份输入内容（含文本、代码、文档等）满足以下任一条件时，必须执行分割处理：
-- 文本类内容：字符数超过 8000 个汉字（或等效字符，英文按 2 字符折算为 1 汉字）
-- 代码类内容：单文件代码行数超过 500 行
-- 文档类内容：单个文件大小超过 1MB（非文本格式按转换后文本量计算）
-- session.md 内容达到 10000 字符时，自动分割为新文件，命名格式为 `session_yyyyMMddHHmm.md`，存放于 `.specstory\history\docs` 根目录，原文件保留并标注“已分割”。
+**定位**: 舆情分析系统
 
-### 2. 分割原则
+**核心功能**:
+- 热点追踪
+- 情感分析
+- 报告生成
+- 数据采集 (MindSpider)
 
-- **逻辑完整性优先**：按功能模块、章节结构、代码逻辑块等自然边界分割，避免拆分完整逻辑单元。session.md 分割需保证单段过程记录的完整性。
-- **均衡性原则**：分割后各部分内容量差异不超过 30%，避免出现过小或过大的分片。
-- **标识清晰性**：每个分片需明确标注：`【分片X/Y】`（X为当前分片序号，Y为总分片数），并在首行说明本分片核心内容。session.md 分片需额外标注分割时间。
+**导航**: [详细文档](./external/BettaFish/CLAUDE.md)
 
-### 3. 分割后处理要求
+---
 
-- 分片间需保留衔接提示（如：“上接【分片1/3】XX内容”“下接【分片3/3】XX内容”）
-- 涉及代码引用时，需在分片内注明完整代码的存储路径及对应分片范围
-- 所有分片需按顺序编号存储，命名格式在原规则基础上增加分片标识（例：`202511091530_用户登录功能需求_1-3.md`），session.md 分片按分割时间排序。
+## 🔧 全局规范
 
-### 4. 拼接说明
+### 代码规范
 
-当需要完整处理分割内容时，需先通过 `merge_file` 工具按编号顺序拼接，拼接后需校验内容完整性（比对分割前总字符数/行数，误差允许范围≤5%）。拼接过程及校验结果记录至最新的 session.md 中。
+**Python**:
+- 格式化: `ruff format`
+- Linter: `ruff check`
+- 类型检查: `pyright` (strict mode)
+- 命名: PascalCase (类), snake_case (函数), UPPER_SNAKE_CASE (常量)
 
-## 十一、重要提醒
+**TypeScript/JavaScript**:
+- 格式化: `prettier`
+- Linter: `eslint`
+- 类型检查: TypeScript strict mode
+- 命名: PascalCase (组件), camelCase (函数/变量), UPPER_SNAKE_CASE (常量)
 
-1. 违反本规则的检查流程、存储规范及分割规则，将导致代码重复、系统冗余、文档追溯困难或内容超限，需严格遵守。相关违规情况及整改措施需记录至 session.md。
-2. 本规则需随项目迭代持续更新，更新记录需同步至「开发进度.md」的 “规则修订” 章节（包括：2024-X-X 新增内容分割规则，解决输入内容超限问题；2024-X-X 新增 session.md 记录要求，规范过程记录）。规则更新过程及内容记录至 session.md。
-3. 所有操作需适配 Windows 10 系统特性，IDE 工具中执行的指令需确保可在该环境下运行。环境适配测试结果同步至 session.md。
+**Rust**:
+- 格式化: `rustfmt`
+- Linter: `clippy`
+- 命名: PascalCase (类型), snake_case (函数/变量), SCREAMING_SNAKE_CASE (常量)
+
+### Git 工作流
+
+**分支策略**:
+- `main` - 生产环境
+- `develop` - 开发环境
+- `feature/{ticket-id}-{description}` - 功能分支
+- `fix/{ticket-id}-{description}` - 修复分支
+
+**Commit 规范**:
+```
+<type>(<scope>): <subject>
+
+类型:
+- feat: 新功能
+- fix: Bug 修复
+- docs: 文档更新
+- style: 代码格式
+- refactor: 重构
+- perf: 性能优化
+- test: 测试相关
+- chore: 构建/工具变更
+
+示例:
+feat(agent-core): add capability declaration for tools
+fix(backend): resolve credential sync race condition
+```
+
+### 资源 URI 规范
+
+**格式**: `asset://{runtime}/{type}/{id}`
+
+**示例**:
+- `asset://local/image/abc123` - 本地图片
+- `asset://cloud/credential/xiaohongshu_user1` - 云端凭证
+- `asset://local/temp/draft_001` - 本地临时文件
+
+**禁止**:
+- 硬编码绝对路径
+- 使用相对路径
+- 使用 `~` 或 `$HOME`
+
+---
+
+## 📊 架构图
+
+### Agent Runtime 三层架构
+
+```mermaid
+graph TB
+    subgraph Layer1[Layer 1: Agent Definition Layer]
+        YAML[YAML/JSON Graph 定义<br/>agent-definitions/*.yaml]
+    end
+
+    subgraph Layer2[Layer 2: Agent Runtime Layer]
+        LocalExec[LocalExecutor<br/>桌面端/Sidecar]
+        CloudExec[CloudExecutor<br/>云端/FastAPI]
+        Router[RuntimeRouter<br/>智能路由]
+    end
+
+    subgraph Layer3[Layer 3: Tool Layer]
+        ToolInterface[ToolInterface<br/>统一接口]
+        LocalImpl[Local Impl<br/>本地实现]
+        CloudImpl[Cloud Impl<br/>云端实现]
+    end
+
+    YAML -->|GraphLoader.load| LocalExec
+    YAML -->|GraphLoader.load| CloudExec
+    LocalExec -->|ToolRegistry.get| ToolInterface
+    CloudExec -->|ToolRegistry.get| ToolInterface
+    ToolInterface --> LocalImpl
+    ToolInterface --> CloudImpl
+    Router -.->|路由决策| LocalExec
+    Router -.->|路由决策| CloudExec
+```
+
+### 端云通信架构
+
+```mermaid
+graph LR
+    subgraph Desktop[桌面端]
+        UI[React UI]
+        Rust[Rust Core]
+        Sidecar[Python Sidecar]
+    end
+
+    subgraph Cloud[云端服务]
+        Gateway[API Gateway]
+        AgentSvc[Agent 服务]
+        BrowserPool[浏览器池]
+    end
+
+    UI -->|IPC| Rust
+    Rust -->|JSON-RPC| Sidecar
+    Sidecar -->|HTTPS| Gateway
+    Gateway --> AgentSvc
+    AgentSvc --> BrowserPool
+```
+
+### 凭证三轨制
+
+```mermaid
+graph TB
+    User[用户]
+
+    subgraph Mode1[模式一: 本地凭证]
+        LocalStore[本地加密存储<br/>AES-256-GCM]
+        LocalExec1[本地执行]
+    end
+
+    subgraph Mode2[模式二: 凭证同步]
+        CloudStore[云端加密存储<br/>双重加密]
+        CloudExec1[云端执行]
+        Sync[凭证同步]
+    end
+
+    subgraph Mode3[模式三: OAuth托管]
+        OAuth[OAuth Token]
+        CloudExec2[云端执行]
+    end
+
+    User -->|选择| Mode1
+    User -->|选择| Mode2
+    User -->|选择| Mode3
+
+    LocalStore --> LocalExec1
+    CloudStore --> CloudExec1
+    LocalStore -.->|可选同步| Sync
+    Sync --> CloudStore
+    OAuth --> CloudExec2
+```
+
+---
+
+## 🚀 快速开始
+
+### 环境要求
+
+- Python >= 3.11
+- Node.js >= 18
+- Rust >= 1.70
+- uv (Python 包管理器)
+- pnpm (Node.js 包管理器)
+
+### 安装依赖
+
+```bash
+# 安装 uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 同步所有 Python 依赖
+uv sync
+
+# 安装 Node.js 依赖
+pnpm install
+```
+
+### 开发
+
+```bash
+# 开发 Sidecar
+cd apps/sidecar
+uv run python -m sidecar.main
+
+# 开发云端服务
+cd services/cloud-backend
+uv run uvicorn backend.app.main:app --reload
+
+# 开发桌面端
+cd apps/desktop
+pnpm run tauri:dev
+
+# 开发移动端
+cd services/mobile-app
+pnpm run dev:mp-weixin
+```
+
+---
+
+## 📚 文档导航
+
+### 设计文档
+
+- [品牌愿景](./docs/00-品牌愿景.md) - 产品定位与愿景
+- [系统架构](./docs/01-系统架构.md) - 整体架构设计
+- [桌面端设计](./docs/02-桌面端设计.md) - Tauri 应用设计
+- [移动端设计](./docs/03-移动端设计.md) - uni-app x 设计
+- [云端服务设计](./docs/04-云端服务设计.md) - FastAPI 后端设计
+- [Agent Runtime](./docs/05-Agent-Runtime.md) - Agent 运行时架构
+- [平台适配器](./docs/06-平台适配器.md) - 平台自动化适配
+- [AI工作流](./docs/07-AI工作流.md) - LangGraph 工作流
+- [数据模型](./docs/08-数据模型.md) - SQLAlchemy 模型
+- [商业模式](./docs/09-商业模式.md) - 订阅与计费
+- [约束细则](./docs/10-约束细则.md) - 法律与安全约束
+- [开发规范](./docs/11-开发规范.md) - 代码规范与工作流
+
+### 需求文档
+
+- [设计规格](./docs/12-设计规格.md)
+- [需求规格](./docs/13-需求规格.md)
+- [补充需求规格](./docs/14-补充需求规格.md)
+- [桌面端开发计划](./docs/15-桌面端开发计划.md)
+
+### 技术文档
+
+- [Graph 定义规范](./docs/graph-definition-spec.md)
+- [技术方案文档](./docs/技术方案文档.md)
+
+---
+
+## 📝 开发记录
+
+所有开发过程记录在 `.specstory/history/docs/session.md`
+
+**最近更新**:
+- 2025-12-28 18:00:00 - Agent Runtime 后续工作完成
+- 2025-12-28 15:37:33 - Agent Runtime 开发实现
+- 2025-12-28 - LLM统一接口设计与文档更新
+
+---
+
+## 🎯 覆盖率度量
+
+### 文件统计
+
+| 类型 | 数量 | 说明 |
+|------|------|------|
+| Python 文件 | 6 个 pyproject.toml | Python 项目配置 |
+| Node.js 文件 | 49 个 package.json | Node.js 项目配置 |
+| Markdown 文档 | 126 个 | 项目文档 |
+| Rust 文件 | 1 个 Cargo.toml | Rust 项目配置 |
+| YAML 定义 | 4 个 | Agent Graph 定义 |
+
+### 模块覆盖
+
+| 模块 | 覆盖率 | 说明 |
+|------|--------|------|
+| agent-core | ✅ 100% | 核心共享包 |
+| apps/desktop | ✅ 100% | 桌面端应用 |
+| apps/sidecar | ✅ 100% | Sidecar 服务 |
+| services/cloud-backend | ✅ 90% | 云端后端 (部分插件未扫描) |
+| services/cloud-frontend | ✅ 80% | 云端前端 (部分包未扫描) |
+| services/mobile-app | ⚠️ 60% | 移动端 (uni_modules 未扫描) |
+| services/new-api | ⚠️ 50% | LLM 网关 (Go 代码未扫描) |
+| external/BettaFish | ⚠️ 40% | 舆情分析 (部分模块未扫描) |
+| external/MiroFish | ⚠️ 40% | 数据采集 (部分模块未扫描) |
+
+### 建议
+
+1. **优先级 P0**: 完善 agent-core 单元测试覆盖率
+2. **优先级 P1**: 补充 Sidecar 集成测试
+3. **优先级 P1**: 完善桌面端 E2E 测试
+4. **优先级 P2**: 扫描 Go 代码 (new-api)
+5. **优先级 P2**: 扫描 Python 模型代码 (BettaFish)
+
+---
+
+## 🔗 相关链接
+
+- [GitHub 仓库](https://github.com/youngshunf/ai-creator)
+- [开发规范](./docs/11-开发规范.md)
+- [系统架构](./docs/01-系统架构.md)
+- [Agent Runtime](./docs/05-Agent-Runtime.md)
+
+---
+
+**维护者**: @Ysf
+**最后更新**: 2025-12-28 21:06:15

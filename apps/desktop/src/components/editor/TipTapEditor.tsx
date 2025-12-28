@@ -141,7 +141,6 @@ export function TipTapEditor({
       {showAIAssist && (
         <BubbleMenu
           editor={editor}
-          tippyOptions={{ duration: 100 }}
           shouldShow={({ editor, state }) => {
             const { from, to } = state.selection;
             return from !== to && !editor.isActive('image');

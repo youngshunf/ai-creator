@@ -33,7 +33,7 @@ export function useAutoSave({
   const { updateDraft, setSaving, setLastSavedAt, isSaving, lastSavedAt } =
     useDraftStore();
 
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastContentRef = useRef<string>(content);
   const lastTitleRef = useRef<string | undefined>(title);
 
