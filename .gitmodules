@@ -13,6 +13,6 @@
 [submodule "external/MiroFish"]
 	path = external/MiroFish
 	url = git@github.com:666ghj/MiroFish.git
-[submodule "services/app"]
-	path = services/app
+[submodule "services/mobile-app"]
+	path = services/mobile-app
 	url = git@github.com:youngshunf/ai-creator-app.git
