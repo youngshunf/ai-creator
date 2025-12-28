@@ -1,0 +1,14 @@
+# pnpm-workspace.yaml
+# Node.js/TypeScript 项目 workspace 配置
+# @author Ysf
+
+packages:
+  # 共享 UI 组件（如果有）
+  - 'packages/ui-components'
+
+  # Monorepo 管理的应用
+  - 'apps/desktop'
+  - 'apps/landing'
+
+  # 注意：services/ 和 external/ 下的项目有独立仓库
+  # 不纳入 pnpm workspace

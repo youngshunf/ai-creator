@@ -35,17 +35,29 @@ AI Creator 是一个面向自媒体创作者的一体化解决方案，通过深
 ## 目录结构
 
 ```
-ai-creator/
-├── src-tauri/              # Tauri Rust后端
-├── src/                    # 前端 (React)
-├── python-sidecar/         # Python Sidecar
-│   ├── src/
-│   │   ├── agents/         # AI Agent
-│   │   ├── automation/     # 浏览器自动化
-│   │   └── content/        # 内容处理
-│   └── tests/
-├── docs/                   # 文档
-└── README.md
+ai-creator/                          # Monorepo 根目录
+├── packages/                        # 共享包 (核心代码)
+│   └── agent-core/                  # Python: Agent 核心库
+│
+├── apps/                            # 应用层 (Monorepo 管理)
+│   ├── sidecar/                     # Python: 桌面端 Sidecar 服务
+│   ├── desktop/                     # Tauri: 桌面端应用
+│   ├── mobile/                      # UniApp: 移动端应用
+│   └── landing/                     # 静态: 落地页
+│
+├── services/                        # 独立服务 (独立仓库)
+│   ├── cloud-backend/               # FastAPI: 云端后端服务
+│   ├── cloud-frontend/              # Vue: 云端管理后台
+│   └── new-api/                     # Go: LLM API 网关
+│
+├── external/                        # 外部项目 (独立仓库)
+│   ├── BettaFish/                   # 舆情分析系统
+│   └── MiroFish/                    # 数据采集系统
+│
+├── agent-definitions/               # Agent Graph 定义 (YAML)
+├── docs/                            # 项目文档
+├── pyproject.toml                   # Python workspace 配置
+└── pnpm-workspace.yaml              # Node.js workspace 配置
 ```
 
 ## 快速开始
@@ -75,16 +87,16 @@ cd apps/sidecar
 uv run python -m sidecar.main
 
 # 开发云端服务
-cd apps/cloud-backend
+cd services/cloud-backend
 uv run uvicorn backend.app.main:app --reload
 
 # 开发桌面端
-cd tauri-app
+cd apps/desktop
 npm install
 npm run tauri dev
 
 # 开发移动端
-cd mobile-app
+cd apps/mobile
 npm install
 npm run dev:mp-weixin
 ```

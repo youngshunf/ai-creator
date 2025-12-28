@@ -87,3 +87,7 @@ tokens/
 # OS
 Thumbs.db
 Desktop.ini
+
+# Rust build artifacts
+**/target/
+

@@ -8,7 +8,13 @@ requires-python = ">=3.11"
 
 [tool.uv]
 # 定义 workspace 成员
-workspace = { members = ["packages/*", "apps/*"] }
+# 注意：services/ 和 external/ 下的项目有独立仓库，不纳入 workspace
+workspace = { members = [
+    "packages/*",
+    "apps/sidecar",
+    # apps/desktop 是 Tauri 项目，不是 Python 项目
+    # apps/landing 是静态页面，不是 Python 项目
+] }
 
 [tool.uv.sources]
 # 本地包源定义（所有 workspace 成员自动可用）
