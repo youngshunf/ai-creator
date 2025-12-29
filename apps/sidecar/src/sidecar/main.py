@@ -186,8 +186,15 @@ class SidecarServer:
 
     async def _handle_execute_graph(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """执行 Graph"""
+        import logging
+        import traceback
+
+        logger = logging.getLogger(__name__)
+
         if not self.executor:
             raise RuntimeError("Executor not initialized")
+
+        logger.info(f"execute_graph params: {params}")
 
         request = ExecutionRequest(
             graph_name=params.get("graph_name", ""),
@@ -198,7 +205,13 @@ class SidecarServer:
             trace_id=params.get("trace_id"),
         )
 
-        response = await self.executor.execute(request)
+        try:
+            response = await self.executor.execute(request)
+            logger.info(f"execute_graph response: success={response.success}, error={response.error}")
+        except Exception as e:
+            logger.error(f"execute_graph exception: {e}")
+            logger.error(traceback.format_exc())
+            raise
 
         return {
             "success": response.success,
@@ -266,6 +279,10 @@ class SidecarServer:
     async def _handle_login(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """用户登录"""
         api_token = params.get("api_token", "")
+        access_token = params.get("access_token", "")
+        access_token_expire_time = params.get("access_token_expire_time", "")
+        refresh_token = params.get("refresh_token", "")
+        refresh_token_expire_time = params.get("refresh_token_expire_time", "")
         environment = params.get("environment", "production")
 
         if not api_token:
@@ -273,7 +290,14 @@ class SidecarServer:
 
         # 保存 Token
         config_manager = LLMConfigManager()
-        config_manager.save_token(api_token, environment)
+        config_manager.save_token(
+            api_token,
+            environment,
+            access_token,
+            access_token_expire_time,
+            refresh_token,
+            refresh_token_expire_time,
+        )
 
         # 重新初始化 LLM 客户端
         llm_config = config_manager.load(environment)
@@ -320,6 +344,9 @@ class SidecarServer:
         """关闭服务器"""
         self._running = False
 
+        if self.executor:
+            await self.executor.shutdown()
+
         if self.llm_client:
             await self.llm_client.close()
 
@@ -329,13 +356,21 @@ class SidecarServer:
 def main():
     """主函数"""
     import os
+    import logging
+
+    # 配置日志输出到 stderr
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='[%(asctime)s] %(levelname)s %(name)s: %(message)s',
+        stream=sys.stderr,
+    )
 
     # 从环境变量或默认值获取配置
     config = {
         "definitions_path": os.environ.get(
             "AGENT_DEFINITIONS_PATH", "agent-definitions"
         ),
-        "environment": os.environ.get("AI_CREATOR_ENV", "production"),
+        "environment": os.environ.get("AI_CREATOR_ENV", "development"),
         "api_keys": {},
     }
 

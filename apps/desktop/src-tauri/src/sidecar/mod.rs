@@ -37,9 +37,18 @@ impl SidecarManager {
             return Err("Sidecar 已经在运行".to_string());
         }
 
-        let mut child = Command::new("python")
+        // 使用 uv run python 确保使用正确的 Python 版本
+        // 设置 PYTHONPATH 指向 sidecar 和 agent-core 源码目录
+        let sidecar_src = format!("{}/apps/sidecar/src", sidecar_path);
+        let agent_core_src = format!("{}/packages/agent-core/src", sidecar_path);
+        let python_path = format!("{}:{}", sidecar_src, agent_core_src);
+
+        let mut child = Command::new("uv")
+            .arg("run")
+            .arg("python")
             .arg("-m")
             .arg("sidecar.main")
+            .env("PYTHONPATH", &python_path)
             .current_dir(sidecar_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

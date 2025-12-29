@@ -5,6 +5,7 @@ use tauri::Manager;
 use std::sync::Mutex;
 
 mod commands;
+mod config;
 mod sidecar;
 
 use sidecar::SidecarManager;
@@ -24,6 +25,10 @@ pub fn run() {
             commands::init_sidecar,
             commands::shutdown_sidecar,
             commands::sidecar_health_check,
+            commands::send_verification_code,
+            commands::phone_login,
+            commands::password_login,
+            commands::logout,
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]

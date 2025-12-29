@@ -397,44 +397,9 @@ class GraphValidator:
         Returns:
             错误列表
         """
-        errors = []
-
-        # 构建邻接表和入度
-        adj: Dict[str, List[str]] = {node: [] for node in nodes}
-        in_degree: Dict[str, int] = {node: 0 for node in nodes}
-
-        for edge in edges:
-            if isinstance(edge, dict):
-                from_node = edge.get("from")
-                to_node = edge.get("to")
-
-                # 只考虑节点间的边（排除 START 和 END）
-                if from_node in nodes and to_node in nodes:
-                    adj[from_node].append(to_node)
-                    in_degree[to_node] += 1
-
-        # 拓扑排序（Kahn 算法）
-        queue = [node for node in nodes if in_degree[node] == 0]
-        sorted_count = 0
-
-        while queue:
-            node = queue.pop(0)
-            sorted_count += 1
-
-            for neighbor in adj[node]:
-                in_degree[neighbor] -= 1
-                if in_degree[neighbor] == 0:
-                    queue.append(neighbor)
-
-        # 如果排序的节点数少于总节点数，说明存在循环
-        if sorted_count < len(nodes):
-            errors.append(
-                ValidationError(
-                    field="spec.edges", message="图中存在循环依赖"
-                )
-            )
-
-        return errors
+        # Agent Graph 允许循环 (如: planner -> executor -> planner)
+        # 因此不再强制检查循环依赖
+        return []
 
     def _validate_expressions(
         self, definition: Dict[str, Any]

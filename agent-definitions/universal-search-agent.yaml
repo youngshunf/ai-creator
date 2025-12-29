@@ -1,0 +1,47 @@
+apiVersion: agent/v1
+kind: Graph
+metadata:
+  name: universal-search-agent
+  version: "1.0.0"
+  description: "通用搜索助手，利用 web-searcher 技能回答问题。"
+spec:
+  # 引用技能
+  skills:
+    - web-searcher
+
+  # 定义输入
+  inputs:
+    query:
+      type: string
+      required: true
+      description: "用户的搜索查询"
+
+  # 定义状态
+  state:
+    messages:
+      type: array
+      default: []
+    final_answer:
+      type: string
+
+  # 节点定义
+  nodes:
+    - name: search_node
+      tool: llm_generate  # 使用 LLM 工具，但因为装配了 Skill，它会拥有 web_search 能力和 Prompt
+      params:
+        messages: "${state.messages}"
+        # 此时 LLM 会看到 System Prompt (from Skill) 和 Tools (from Skill + Registry)
+      outputs:
+        messages: "$.messages"
+        final_answer: "$.content"
+
+  # 边定义
+  edges:
+    - from: START
+      to: search_node
+    - from: search_node
+      to: END
+
+  # 输出定义
+  outputs:
+    answer: "${state.final_answer}"

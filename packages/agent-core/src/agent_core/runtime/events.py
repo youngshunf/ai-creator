@@ -26,6 +26,10 @@ class EventType(str, Enum):
     # 人机交互
     HUMAN_REQUIRED = "human_required"
     HUMAN_RESPONDED = "human_responded"
+    
+    # UI 渲染 (A2UI)
+    UI_RENDER = "ui_render"
+    UI_RESPONSE = "ui_response"
 
     # 预算与成本
     BUDGET_WARNING = "budget_warning"

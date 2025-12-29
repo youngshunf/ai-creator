@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModelSelector } from '@/components/settings/ModelSelector';
-import { UsageStats } from '@/components/settings/UsageStats';
+import { UsageStatsPanel as UsageStats } from '@/components/settings/UsageStats';
 import { CredentialManager } from '@/components/settings/CredentialManager';
 
 export const Route = createFileRoute('/settings/')({

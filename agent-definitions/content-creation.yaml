@@ -62,7 +62,7 @@ spec:
           - 风格：${inputs.style}
           - 最大字数：${inputs.max_length}
         model: "${runtime.model_default}"
-        max_tokens: 4000
+        max_tokens: 40000
       outputs:
         content: "$.content"
 

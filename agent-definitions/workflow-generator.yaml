@@ -1,0 +1,38 @@
+apiVersion: agent/v1
+kind: Graph
+metadata:
+  name: workflow-generator
+  version: "1.0.0"
+  description: "Meta-Agent that generates other Agent Graphs based on natural language requirements."
+spec:
+  skills:
+    - workflow-generator
+
+  inputs:
+    requirement:
+      type: string
+      required: true
+      description: "User's request for an agent workflow"
+
+  state:
+    generated_yaml:
+      type: string
+
+  nodes:
+    - name: generator
+      tool: llm_generate
+      params:
+        prompt: "User Requirement: ${inputs.requirement}\n\nGenerate the Agent Graph YAML."
+        model: "claude-sonnet-4-20250514"
+        max_tokens: 4000
+      outputs:
+        generated_yaml: "$.data.content"
+
+  edges:
+    - from: START
+      to: generator
+    - from: generator
+      to: END
+
+  outputs:
+    graph_yaml: "${state.generated_yaml}"

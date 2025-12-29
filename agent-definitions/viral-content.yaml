@@ -1,38 +1,58 @@
-# 爆款内容 Graph 定义
-# @author Ysf
+apiVersion: agent/v1
+kind: Graph
+metadata:
+  name: viral-content
+  version: "1.0.0"
+  description: "爆款内容创作工作流"
+spec:
+  inputs:
+    topic:
+      type: string
+      required: true
+      description: "内容主题"
+    platform:
+      type: string
+      description: "目标平台 (可选)"
 
-name: viral-content
-version: "1.0"
-description: "爆款内容创作工作流"
+  state:
+    trends:
+      type: string
+    ideas:
+      type: string
+    content:
+      type: string
 
-nodes:
-  - id: start
-    type: start
-    next: analyze_trends
+  nodes:
+    - name: analyze_trends
+      tool: web_search
+      params:
+        query: "${inputs.topic} 热点趋势"
+      outputs:
+        trends: "$.data.content"
 
-  - id: analyze_trends
-    type: tool
-    tool_name: bettafish_analyzer
-    next: generate_ideas
+    - name: generate_ideas
+      tool: llm_generate
+      params:
+        prompt: "基于以下热点趋势，为 '${inputs.topic}' 生成 3 个爆款内容创意:\n\n${state.trends}"
+      outputs:
+        ideas: "$.data.content"
 
-  - id: generate_ideas
-    type: llm
-    prompt: "基于热点趋势生成内容创意"
-    next: select_best_idea
+    - name: create_content
+      tool: llm_generate
+      params:
+        prompt: "从以下创意中选择最佳的一个，并创作完整的爆款内容:\n\n${state.ideas}\n\n要求：吸引眼球、有传播力、符合平台调性。"
+      outputs:
+        content: "$.data.content"
 
-  - id: select_best_idea
-    type: human
-    prompt: "请选择最佳创意"
-    next: create_content
+  edges:
+    - from: START
+      to: analyze_trends
+    - from: analyze_trends
+      to: generate_ideas
+    - from: generate_ideas
+      to: create_content
+    - from: create_content
+      to: END
 
-  - id: create_content
-    type: llm
-    prompt: "创作爆款内容"
-    next: end
-
-  - id: end
-    type: end
-
-tools:
-  - name: bettafish_analyzer
-    description: "BettaFish 热点分析"
+  outputs:
+    content: "${state.content}"

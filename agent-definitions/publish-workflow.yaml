@@ -1,38 +1,59 @@
-# 发布工作流 Graph 定义
-# @author Ysf
+apiVersion: agent/v1
+kind: Graph
+metadata:
+  name: publish-workflow
+  version: "1.0.0"
+  description: "多平台发布工作流"
+spec:
+  inputs:
+    content:
+      type: string
+      required: true
+      description: "待发布的内容"
+    platform:
+      type: string
+      required: true
+      description: "目标发布平台"
 
-name: publish-workflow
-version: "1.0"
-description: "多平台发布工作流"
+  state:
+    validated_content:
+      type: string
+    formatted_content:
+      type: string
+    publish_result:
+      type: string
 
-nodes:
-  - id: start
-    type: start
-    next: validate_content
+  nodes:
+    - name: validate_content
+      tool: llm_generate
+      params:
+        prompt: "验证以下内容是否符合发布规范（无敏感词、格式正确）:\n${inputs.content}\n\n如果合规，返回原文；如果不合规，返回修改建议。"
+      outputs:
+        validated_content: "$.data.content"
 
-  - id: validate_content
-    type: tool
-    tool_name: content_validator
-    next: format_for_platform
+    - name: format_for_platform
+      tool: llm_generate
+      params:
+        prompt: "将以下内容适配为 '${inputs.platform}' 平台的格式（如字数限制、标签格式等）:\n${state.validated_content}"
+      outputs:
+        formatted_content: "$.data.content"
 
-  - id: format_for_platform
-    type: tool
-    tool_name: platform_formatter
-    next: publish
+    - name: publish
+      tool: llm_generate
+      params:
+        prompt: "模拟发布操作：内容已准备好发布到 '${inputs.platform}'。\n内容预览:\n${state.formatted_content}\n\n返回：发布成功的模拟消息。"
+      outputs:
+        publish_result: "$.data.content"
 
-  - id: publish
-    type: tool
-    tool_name: browser_publish
-    next: end
+  edges:
+    - from: START
+      to: validate_content
+    - from: validate_content
+      to: format_for_platform
+    - from: format_for_platform
+      to: publish
+    - from: publish
+      to: END
 
-  - id: end
-    type: end
-
-tools:
-  - name: content_validator
-    description: "验证内容合规性"
-  - name: platform_formatter
-    description: "适配平台格式"
-  - name: browser_publish
-    description: "浏览器自动化发布"
-    runtime_specific: true
+  outputs:
+    result: "${state.publish_result}"

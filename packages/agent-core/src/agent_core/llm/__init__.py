@@ -9,6 +9,7 @@ LLM 统一接口模块
 
 from .interface import (
     LLMProvider,
+    ModelType,
     ModelInfo,
     LLMMessage,
     LLMUsage,
@@ -24,6 +25,7 @@ from .direct_client import DirectLLMClient
 __all__ = [
     # 接口定义
     "LLMProvider",
+    "ModelType",
     "ModelInfo",
     "LLMMessage",
     "LLMUsage",

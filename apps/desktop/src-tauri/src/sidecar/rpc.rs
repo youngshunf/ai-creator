@@ -5,6 +5,8 @@
 //! @author Ysf
 //! @date 2025-12-28
 
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

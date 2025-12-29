@@ -16,6 +16,7 @@ from .interface import (
     LLMResponse,
     LLMUsage,
     ModelInfo,
+    ModelType,
     LLMProvider,
 )
 
@@ -146,11 +147,42 @@ class DirectLLMClient(LLMClientInterface):
                 provider=LLMProvider(m.provider) if hasattr(m, 'provider') else LLMProvider.OPENAI,
                 display_name=m.display_name if hasattr(m, 'display_name') else m.model_id,
                 max_tokens=m.max_tokens if hasattr(m, 'max_tokens') else 4096,
+                model_type=ModelType(m.model_type) if hasattr(m, 'model_type') else ModelType.TEXT,
                 supports_streaming=m.supports_streaming if hasattr(m, 'supports_streaming') else True,
                 supports_vision=m.supports_vision if hasattr(m, 'supports_vision') else False,
+                priority=m.priority if hasattr(m, 'priority') else 0,
+                enabled=m.enabled if hasattr(m, 'enabled') else True,
             )
             for m in models
+            if getattr(m, 'enabled', True)
         ]
+
+    async def get_model_by_type(self, model_type: ModelType) -> Optional[ModelInfo]:
+        """
+        按类型获取推荐模型
+
+        Args:
+            model_type: 模型类型
+
+        Returns:
+            ModelInfo: 该类型下优先级最高的可用模型
+        """
+        models = await self.get_models_by_type(model_type)
+        return models[0] if models else None
+
+    async def get_models_by_type(self, model_type: ModelType) -> List[ModelInfo]:
+        """
+        按类型获取所有可用模型
+
+        Args:
+            model_type: 模型类型
+
+        Returns:
+            List[ModelInfo]: 该类型下所有可用模型，按优先级排序
+        """
+        all_models = await self.get_available_models()
+        typed_models = [m for m in all_models if m.model_type == model_type and m.enabled]
+        return sorted(typed_models, key=lambda m: m.priority, reverse=True)
 
     async def get_usage_summary(
         self,

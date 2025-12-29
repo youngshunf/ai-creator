@@ -7,7 +7,7 @@ LLM 统一接口定义
 
 from abc import ABC, abstractmethod
 from typing import Optional, AsyncIterator, List
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 
@@ -22,6 +22,23 @@ class LLMProvider(str, Enum):
     MOONSHOT = "moonshot"
 
 
+class ModelType(str, Enum):
+    """
+    模型类型
+
+    与云端后端和前端 MODEL_TYPES 保持一致
+    """
+
+    TEXT = 'TEXT'           # 文本生成
+    REASONING = 'REASONING' # 推理
+    VISION = 'VISION'       # 视觉
+    IMAGE = 'IMAGE'         # 图像生成
+    VIDEO = 'VIDEO'         # 视频生成
+    EMBEDDING = 'EMBEDDING' # 嵌入
+    TTS = 'TTS'             # 语音合成
+    STT = 'STT'             # 语音识别
+
+
 @dataclass
 class ModelInfo:
     """模型信息"""
@@ -29,16 +46,22 @@ class ModelInfo:
     provider: LLMProvider
     display_name: str
     max_tokens: int
+    model_type: ModelType = ModelType.TEXT
     supports_streaming: bool = True
     supports_vision: bool = False
     supports_tools: bool = True
+    priority: int = 0  # 同类型模型的优先级，数值越大优先级越高
+    enabled: bool = True  # 是否启用
 
 
 @dataclass
 class LLMMessage:
     """LLM 消息"""
-    role: str  # system, user, assistant
+    role: str  # system, user, assistant, tool
     content: str
+    name: Optional[str] = None
+    tool_calls: Optional[List[dict]] = None
+    tool_call_id: Optional[str] = None
 
 
 @dataclass
@@ -59,15 +82,20 @@ class LLMResponse:
     cost: float = 0.0
     latency_ms: int = 0
     finish_reason: str = "stop"
+    tool_calls: Optional[List[dict]] = None
 
 
 @dataclass
 class LLMConfig:
     """LLM 客户端配置"""
     base_url: str
-    api_token: str
+    api_token: str  # LLM API Key (sk-cf-xxx)
+    access_token: str = ""  # JWT Token (用于用户认证)
+    access_token_expire_time: str = ""  # JWT 过期时间 (ISO 格式)
+    refresh_token: str = ""  # 刷新令牌
+    refresh_token_expire_time: str = ""  # 刷新令牌过期时间 (ISO 格式)
     environment: str = "production"
-    default_model: str = "claude-sonnet-4-20250514"
+    default_model: str = "claude-sonnet-4-5-20250929"
     default_max_tokens: int = 4096
     default_temperature: float = 0.7
     timeout_seconds: int = 120
@@ -90,6 +118,7 @@ class LLMClientInterface(ABC):
         *,
         model: Optional[str] = None,
         system: Optional[str] = None,
+        tools: Optional[List[dict]] = None,
         max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
         user_id: Optional[str] = None,
@@ -114,6 +143,32 @@ class LLMClientInterface(ABC):
     @abstractmethod
     async def get_available_models(self) -> List[ModelInfo]:
         """获取可用模型列表"""
+        pass
+
+    @abstractmethod
+    async def get_model_by_type(self, model_type: ModelType) -> Optional[ModelInfo]:
+        """
+        按类型获取推荐模型
+
+        Args:
+            model_type: 模型类型
+
+        Returns:
+            ModelInfo: 该类型下优先级最高的可用模型，无可用模型返回 None
+        """
+        pass
+
+    @abstractmethod
+    async def get_models_by_type(self, model_type: ModelType) -> List[ModelInfo]:
+        """
+        按类型获取所有可用模型
+
+        Args:
+            model_type: 模型类型
+
+        Returns:
+            List[ModelInfo]: 该类型下所有可用模型，按优先级排序
+        """
         pass
 
     @abstractmethod

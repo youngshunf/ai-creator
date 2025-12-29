@@ -1,0 +1,71 @@
+apiVersion: agent/v1
+kind: Graph
+metadata:
+  name: browser-use-agent
+  version: "1.0.0"
+  description: "自主浏览器代理，执行复杂的网页操作任务。"
+spec:
+  # 引用技能 (提供系统 Prompts 和 Tools)
+  skills:
+    - browser-user
+
+  # 定义输入
+  inputs:
+    goal:
+      type: string
+      required: true
+      description: "用户的浏览器操作目标"
+
+  # 定义状态
+  state:
+    messages:
+      type: array
+      default: []
+    last_response:
+      type: object
+
+  # 节点定义
+  nodes:
+    - name: planner
+      tool: llm_generate
+      params:
+        # 如果是第一轮 (messages为空)，使用 goal 作为 prompt
+        # 如果是后续轮次，prompt 为空 (使用 messages 历史)
+        prompt: "${inputs.goal if len(state.messages) == 0 else None}"
+        messages: "${state.messages}"
+      outputs:
+        # LLMGenerateTool 返回的 data.message 是 LLMMessage 对象
+        "+messages": "$.data.message"
+        last_response: "$.data"
+        
+    - name: executor
+      tool: tool_executor
+      params:
+        tool_calls: "${state.last_response.tool_calls}"
+      outputs:
+        # ToolExecutionTool 返回的 data.messages 是 LLMMessage 对象列表
+        "+messages": "$.data.messages"
+
+  # 边定义
+  edges:
+    - from: START
+      to: planner
+
+    # 如果有工具调用，进入 executor
+    - from: planner
+      to: executor
+      condition: "${state.last_response.tool_calls and len(state.last_response.tool_calls) > 0}"
+
+    # 如果没有工具调用 (对话结束)，直接结束
+    - from: planner
+      to: END
+      condition: "${not state.last_response.tool_calls or len(state.last_response.tool_calls) == 0}"
+
+    # 工具执行完，循环回 planner
+    - from: executor
+      to: planner
+
+  # 输出定义
+  outputs:
+    result: "${state.last_response.content}"
+    messages: "${state.messages}"

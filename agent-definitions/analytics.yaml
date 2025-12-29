@@ -1,35 +1,55 @@
-# 数据分析 Graph 定义
-# @author Ysf
+apiVersion: agent/v1
+kind: Graph
+metadata:
+  name: analytics
+  version: "1.0.0"
+  description: "数据分析与洞察工作流"
+spec:
+  inputs:
+    data_source:
+      type: string
+      required: true
+      description: "数据源标识"
 
-name: analytics
-version: "1.0"
-description: "数据分析与洞察工作流"
+  state:
+    raw_data:
+      type: string
+    analysis_result:
+      type: string
+    report:
+      type: string
 
-nodes:
-  - id: start
-    type: start
-    next: collect_data
+  nodes:
+    - name: collect_data
+      tool: llm_generate
+      params:
+        prompt: "模拟采集来自 '${inputs.data_source}' 的数据。返回 JSON 格式的样例数据。"
+      outputs:
+        raw_data: "$.data.content"
 
-  - id: collect_data
-    type: tool
-    tool_name: data_collector
-    next: analyze_metrics
+    - name: analyze_metrics
+      tool: llm_generate
+      params:
+        prompt: "分析以下数据指标，生成洞察:\n${state.raw_data}"
+      outputs:
+        analysis_result: "$.data.content"
 
-  - id: analyze_metrics
-    type: llm
-    prompt: "分析数据指标，生成洞察"
-    next: generate_report
+    - name: generate_report
+      tool: llm_generate
+      params:
+        prompt: "基于以下分析结果，生成一份简洁的分析报告:\n${state.analysis_result}"
+      outputs:
+        report: "$.data.content"
 
-  - id: generate_report
-    type: tool
-    tool_name: report_generator
-    next: end
+  edges:
+    - from: START
+      to: collect_data
+    - from: collect_data
+      to: analyze_metrics
+    - from: analyze_metrics
+      to: generate_report
+    - from: generate_report
+      to: END
 
-  - id: end
-    type: end
-
-tools:
-  - name: data_collector
-    description: "采集平台数据"
-  - name: report_generator
-    description: "生成分析报告"
+  outputs:
+    report: "${state.report}"

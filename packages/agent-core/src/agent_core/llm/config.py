@@ -29,7 +29,7 @@ class LLMConfigManager:
 
     # 默认网关地址 (固定，用户无需配置)
     DEFAULT_URLS = {
-        "development": "http://localhost:8001",
+        "development": "http://localhost:8000",
         "production": "https://api.ai-creator.com",
     }
 
@@ -65,8 +65,12 @@ class LLMConfigManager:
                 return LLMConfig(
                     base_url=self.DEFAULT_URLS.get(environment, self.DEFAULT_URLS["production"]),
                     api_token=env_config.get("api_token", ""),
+                    access_token=env_config.get("access_token", ""),
+                    access_token_expire_time=env_config.get("access_token_expire_time", ""),
+                    refresh_token=env_config.get("refresh_token", ""),
+                    refresh_token_expire_time=env_config.get("refresh_token_expire_time", ""),
                     environment=environment,
-                    default_model=env_config.get("default_model", "claude-sonnet-4-20250514"),
+                    default_model=env_config.get("default_model", "claude-sonnet-4-5-20250929"),
                     timeout_seconds=env_config.get("timeout_seconds", 120),
                 )
             except (json.JSONDecodeError, IOError):
@@ -76,16 +80,29 @@ class LLMConfigManager:
         return LLMConfig(
             base_url=self.DEFAULT_URLS.get(environment, self.DEFAULT_URLS["production"]),
             api_token="",
+            access_token="",
             environment=environment,
         )
 
-    def save_token(self, api_token: str, environment: str = "production"):
+    def save_token(
+        self,
+        api_token: str,
+        environment: str = "production",
+        access_token: str = "",
+        access_token_expire_time: str = "",
+        refresh_token: str = "",
+        refresh_token_expire_time: str = "",
+    ):
         """
-        保存 API Token (用户登录后自动调用)
+        保存 Token (用户登录后自动调用)
 
         Args:
-            api_token: 服务端分发的 API Token (sk-cf-xxx)
+            api_token: LLM API Key (sk-cf-xxx)
             environment: 环境名称
+            access_token: JWT Token (用于用户认证)
+            access_token_expire_time: JWT 过期时间 (ISO 格式)
+            refresh_token: 刷新令牌
+            refresh_token_expire_time: 刷新令牌过期时间 (ISO 格式)
         """
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -102,6 +119,14 @@ class LLMConfigManager:
         if environment not in data:
             data[environment] = {}
         data[environment]["api_token"] = api_token
+        if access_token:
+            data[environment]["access_token"] = access_token
+        if access_token_expire_time:
+            data[environment]["access_token_expire_time"] = access_token_expire_time
+        if refresh_token:
+            data[environment]["refresh_token"] = refresh_token
+        if refresh_token_expire_time:
+            data[environment]["refresh_token_expire_time"] = refresh_token_expire_time
 
         # 写入配置
         with open(self.config_path, "w", encoding="utf-8") as f:
@@ -129,6 +154,10 @@ class LLMConfigManager:
 
             if environment in data:
                 data[environment]["api_token"] = ""
+                data[environment]["access_token"] = ""
+                data[environment]["access_token_expire_time"] = ""
+                data[environment]["refresh_token"] = ""
+                data[environment]["refresh_token_expire_time"] = ""
 
             with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)

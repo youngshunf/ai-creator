@@ -39,6 +39,10 @@ image = [
     "replicate>=0.20.0",
     "pillow>=10.0.0",
 ]
+# 浏览器自动化
+browser = [
+    "playwright>=1.40.0",
+]
 # 完整安装
 all = [
     "tavily-python>=0.3.0",

@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { routeTree } from './routeTree.gen';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { ToastProvider } from './components/common/Toast';
+import { SidecarInitializer } from './components/common/SidecarInitializer';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -33,7 +34,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
-          <RouterProvider router={router} />
+          <SidecarInitializer>
+            <RouterProvider router={router} />
+          </SidecarInitializer>
         </ToastProvider>
       </QueryClientProvider>
     </ErrorBoundary>

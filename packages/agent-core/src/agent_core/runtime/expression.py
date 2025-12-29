@@ -6,9 +6,29 @@
 import re
 from typing import Any, Dict, Optional
 
-from simpleeval import SimpleEval, NameNotDefined
+from simpleeval import EvalWithCompoundTypes, NameNotDefined
 
 from .context import RuntimeContext
+
+
+class DictWrapper:
+    """将字典包装为支持属性访问的对象"""
+
+    def __init__(self, data: Dict[str, Any]):
+        self._data = data
+
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith('_'):
+            return object.__getattribute__(self, name)
+        if name in self._data:
+            value = self._data[name]
+            if isinstance(value, dict):
+                return DictWrapper(value)
+            return value
+        return None  # 返回 None 而不是抛出异常
+
+    def __getitem__(self, key: str) -> Any:
+        return self._data.get(key)
 
 
 class ExpressionEvaluator:
@@ -38,11 +58,11 @@ class ExpressionEvaluator:
         self.ctx = ctx
         self._evaluator = self._create_evaluator()
 
-    def _create_evaluator(self) -> SimpleEval:
+    def _create_evaluator(self) -> EvalWithCompoundTypes:
         """
         创建 SimpleEval 实例，配置安全函数和变量
         """
-        evaluator = SimpleEval()
+        evaluator = EvalWithCompoundTypes()
 
         # 允许的安全函数
         evaluator.functions = {
@@ -89,6 +109,10 @@ class ExpressionEvaluator:
         inputs = inputs if inputs is not None else self.ctx.inputs
         state = state if state is not None else {}
 
+        # 如果不是字符串，直接返回
+        if not isinstance(expr, str):
+            return expr
+
         # 如果不包含 ${...}，直接返回原字符串
         if "${" not in expr:
             return expr
@@ -117,11 +141,11 @@ class ExpressionEvaluator:
         Returns:
             求值结果
         """
-        # 构建变量上下文
+        # 构建变量上下文（使用 DictWrapper 支持属性访问）
         names = {
-            "inputs": inputs,
-            "state": state,
-            "runtime": self._create_runtime_namespace(),
+            "inputs": DictWrapper(inputs),
+            "state": DictWrapper(state),
+            "runtime": DictWrapper(self._create_runtime_namespace()),
         }
 
         # 使用 SimpleEval 安全求值

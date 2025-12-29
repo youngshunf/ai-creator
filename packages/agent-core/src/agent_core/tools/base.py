@@ -22,6 +22,7 @@ class ToolCapability(str, Enum):
     WEB_SEARCH = "web_search"
     IMAGE_GEN = "image_gen"
     BROWSER_AUTOMATION = "browser_automation"
+    TOOL_CALL = "tool_call"
     FILE_STORAGE = "file_storage"
     CREDENTIAL_STORE = "credential_store"
     HOT_TOPIC_DISCOVERY = "hot_topic_discovery"

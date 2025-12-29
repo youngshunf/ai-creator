@@ -1,9 +1,12 @@
 /**
- * 顶部导航栏组件 - 支持字体大小调整
+ * 顶部导航栏组件 - 支持字体大小调整和用户菜单
  * @author Ysf
  */
-import { Bell, Search, User, Type } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Bell, Search, User, Type, LogOut, Settings } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
 import { useAppStore, FontSize } from '@/stores/useAppStore';
+import { useAuth, useAuthStore } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 const fontSizeOptions: { value: FontSize; label: string }[] = [
@@ -13,7 +16,28 @@ const fontSizeOptions: { value: FontSize; label: string }[] = [
 ];
 
 export function Header() {
+  const navigate = useNavigate();
   const { fontSize, setFontSize } = useAppStore();
+  const user = useAuthStore((s) => s.user);
+  const { logout } = useAuth();
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // 点击外部关闭菜单
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate({ to: '/login' });
+  };
 
   return (
     <header className="h-14 bg-white flex items-center justify-between px-5 shadow-xs">
@@ -53,9 +77,47 @@ export function Header() {
         <button className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-colors duration-150">
           <Bell className="w-[18px] h-[18px]" strokeWidth={1.75} />
         </button>
-        <button className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-colors duration-150">
-          <User className="w-[18px] h-[18px]" strokeWidth={1.75} />
-        </button>
+
+        {/* 用户菜单 */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="flex items-center gap-2 p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-colors duration-150"
+          >
+            {user?.avatar ? (
+              <img src={user.avatar} alt="" className="w-7 h-7 rounded-full" />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center">
+                <User className="w-4 h-4 text-blue-600" strokeWidth={1.75} />
+              </div>
+            )}
+          </button>
+
+          {showMenu && (
+            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-100 py-1 z-50">
+              <div className="px-4 py-2 border-b border-slate-100">
+                <p className="text-sm font-medium text-slate-800 truncate">
+                  {user?.nickname || user?.username || '用户'}
+                </p>
+                <p className="text-xs text-slate-400 truncate">{user?.phone || user?.email}</p>
+              </div>
+              <button
+                onClick={() => { setShowMenu(false); navigate({ to: '/settings' }); }}
+                className="w-full px-4 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                设置
+              </button>
+              <button
+                onClick={handleLogout}
+                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                退出登录
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

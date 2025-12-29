@@ -2,28 +2,28 @@
  * 认证 Hook
  * @author Ysf
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface User {
-  id: string;
+  id: number;
+  uuid: string;
   username: string;
+  nickname: string;
+  phone?: string;
   email?: string;
   avatar?: string;
-  subscription?: {
-    plan: 'free' | 'pro' | 'enterprise';
-    expiresAt?: string;
-  };
+  is_new_user: boolean;
 }
 
 interface AuthState {
   user: User | null;
   token: string | null;
+  llmToken: string | null;
   isAuthenticated: boolean;
-  setUser: (user: User | null) => void;
-  setToken: (token: string | null) => void;
+  setAuth: (user: User, token: string, llmToken: string) => void;
   logout: () => void;
 }
 
@@ -32,101 +32,102 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       token: null,
+      llmToken: null,
       isAuthenticated: false,
 
-      setUser: (user) =>
+      setAuth: (user, token, llmToken) =>
         set({
           user,
-          isAuthenticated: !!user,
+          token,
+          llmToken,
+          isAuthenticated: true,
         }),
-
-      setToken: (token) => set({ token }),
 
       logout: () =>
         set({
           user: null,
           token: null,
+          llmToken: null,
           isAuthenticated: false,
         }),
     }),
     {
       name: 'ai-creator-auth',
-      partialize: (state) => ({
-        user: state.user,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated,
-      }),
     }
   )
 );
 
-export interface LoginCredentials {
-  username: string;
-  password: string;
+interface LoginResponse {
+  user: User;
+  token: string;
+  llm_token: string;
+  is_new_user: boolean;
 }
 
-export interface UseAuthReturn {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-  login: (credentials: LoginCredentials) => Promise<boolean>;
-  logout: () => Promise<void>;
-  refreshToken: () => Promise<boolean>;
-}
-
-export function useAuth(): UseAuthReturn {
-  const { user, isAuthenticated, setUser, setToken, logout: storeLogout } =
-    useAuthStore();
+export function useAuth() {
+  const { user, isAuthenticated, setAuth, logout: storeLogout } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const login = useCallback(
-    async (credentials: LoginCredentials): Promise<boolean> => {
+  // 发送验证码
+  const sendCode = useCallback(async (phone: string): Promise<boolean> => {
+    setIsSendingCode(true);
+    setError(null);
+    try {
+      await invoke('send_verification_code', { phone });
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      return false;
+    } finally {
+      setIsSendingCode(false);
+    }
+  }, []);
+
+  // 手机号登录
+  const phoneLogin = useCallback(
+    async (phone: string, code: string): Promise<boolean> => {
       setIsLoading(true);
       setError(null);
-
       try {
-        const response = await invoke<{
-          success: boolean;
-          data?: {
-            user: User;
-            token: string;
-            llm_token: string;
-          };
-          error?: string;
-        }>('login', { credentials });
-
-        if (!response.success || !response.data) {
-          setError(response.error || '登录失败');
-          return false;
-        }
-
-        const { user, token, llm_token } = response.data;
-
-        setUser(user);
-        setToken(token);
-
-        await invoke('save_llm_token', { token: llm_token });
-
+        const resp = await invoke<LoginResponse>('phone_login', { phone, code });
+        setAuth(resp.user, resp.token, resp.llm_token);
         return true;
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : '登录失败，请重试';
-        setError(errorMessage);
+        setError(err instanceof Error ? err.message : String(err));
         return false;
       } finally {
         setIsLoading(false);
       }
     },
-    [setUser, setToken]
+    [setAuth]
   );
 
+  // 密码登录
+  const passwordLogin = useCallback(
+    async (username: string, password: string): Promise<boolean> => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const resp = await invoke<LoginResponse>('password_login', { username, password });
+        setAuth(resp.user, resp.token, resp.llm_token);
+        return true;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [setAuth]
+  );
+
+  // 登出
   const logout = useCallback(async (): Promise<void> => {
     setIsLoading(true);
-
     try {
-      await invoke('clear_llm_token');
+      await invoke('logout');
       storeLogout();
     } catch (err) {
       console.error('Logout error:', err);
@@ -135,31 +136,17 @@ export function useAuth(): UseAuthReturn {
     }
   }, [storeLogout]);
 
-  const refreshToken = useCallback(async (): Promise<boolean> => {
-    try {
-      const response = await invoke<{
-        success: boolean;
-        data?: { token: string };
-      }>('refresh_token');
-
-      if (response.success && response.data) {
-        setToken(response.data.token);
-        return true;
-      }
-      return false;
-    } catch {
-      return false;
-    }
-  }, [setToken]);
-
   return {
     user,
     isAuthenticated,
     isLoading,
+    isSendingCode,
     error,
-    login,
+    sendCode,
+    phoneLogin,
+    passwordLogin,
     logout,
-    refreshToken,
+    clearError: () => setError(null),
   };
 }
 

@@ -4,9 +4,10 @@ Graph 类型定义 - 定义 Graph 相关的数据结构
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Callable, Union
 
 from langgraph.graph import StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
 
 @dataclass
@@ -14,11 +15,11 @@ class CompiledGraph:
     """
     编译后的 Graph
 
-    包含 LangGraph 的 StateGraph 对象、元数据和初始状态模板。
+    包含 LangGraph 的编译后 StateGraph 对象、元数据和初始状态模板。
     """
 
-    # LangGraph StateGraph 对象
-    graph: StateGraph
+    # LangGraph 编译后的 StateGraph 对象
+    graph: Union[StateGraph, CompiledStateGraph]
 
     # Graph 元数据
     metadata: Dict[str, Any] = field(default_factory=dict)

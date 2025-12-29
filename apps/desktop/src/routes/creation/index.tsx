@@ -5,6 +5,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState, useCallback, useEffect } from 'react';
 import { PanelLeftClose, PanelLeft, Save, Cloud, CloudOff } from 'lucide-react';
+import { marked } from 'marked';
 import { TipTapEditor } from '@/components/editor/TipTapEditor';
 import { AIWritingPanel } from '@/components/editor/AIWritingPanel';
 import { useDraftStore } from '@/stores/useDraftStore';
@@ -68,12 +69,14 @@ function CreationPage() {
   const handleAIGenerated = useCallback(
     (generatedTitle: string, generatedContent: string, tags: string[]) => {
       setTitle(generatedTitle);
-      setContent(generatedContent);
+      // 将 Markdown 转换为 HTML
+      const htmlContent = marked.parse(generatedContent, { async: false }) as string;
+      setContent(htmlContent);
 
       if (currentDraftId) {
         updateDraft(currentDraftId, {
           title: generatedTitle,
-          content: generatedContent,
+          content: htmlContent,
           tags,
         });
       }

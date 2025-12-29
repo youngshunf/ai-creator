@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as PublishIndexRouteImport } from './routes/publish/index'
 import { Route as CreationIndexRouteImport } from './routes/creation/index'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +43,14 @@ const CreationIndexRoute = CreationIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/creation': typeof CreationIndexRoute
   '/publish': typeof PublishIndexRoute
   '/settings': typeof SettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/creation': typeof CreationIndexRoute
   '/publish': typeof PublishIndexRoute
   '/settings': typeof SettingsIndexRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/creation/': typeof CreationIndexRoute
   '/publish/': typeof PublishIndexRoute
   '/settings/': typeof SettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/creation' | '/publish' | '/settings'
+  fullPaths: '/' | '/login' | '/creation' | '/publish' | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/creation' | '/publish' | '/settings'
-  id: '__root__' | '/' | '/creation/' | '/publish/' | '/settings/'
+  to: '/' | '/login' | '/creation' | '/publish' | '/settings'
+  id: '__root__' | '/' | '/login' | '/creation/' | '/publish/' | '/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
   CreationIndexRoute: typeof CreationIndexRoute
   PublishIndexRoute: typeof PublishIndexRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
@@ -71,6 +81,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
   CreationIndexRoute: CreationIndexRoute,
   PublishIndexRoute: PublishIndexRoute,
   SettingsIndexRoute: SettingsIndexRoute,
