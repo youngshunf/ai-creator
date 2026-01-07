@@ -96,12 +96,12 @@ uv run uvicorn backend.app.main:app --reload
 
 # 开发桌面端
 cd apps/desktop
-npm install
-npm run tauri dev
+pnpm install
+pnpm run tauri:dev
 
 # 开发移动端
 cd services/mobile-app
-npm install
+pnpm install
 npm run dev:mp-weixin
 ```
 

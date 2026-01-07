@@ -22,13 +22,23 @@ spec:
       type: string
       required: false
       default: "professional"
-      description: "写作风格"
+      description: "写作风格: xiaohongshu(小红书风), wechat(公众号风), douyin(抖音风), professional(专业风)"
+
+    platform:
+      type: string
+      required: false
+      description: "目标平台，用于自动适配内容长度"
 
     max_length:
       type: integer
       required: false
       default: 2000
       description: "最大字数"
+
+    project_context:
+      type: object
+      required: false
+      description: "项目上下文（品牌、行业等）"
 
   # 状态变量
   state:

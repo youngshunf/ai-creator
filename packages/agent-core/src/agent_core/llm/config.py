@@ -29,7 +29,7 @@ class LLMConfigManager:
 
     # 默认网关地址 (固定，用户无需配置)
     DEFAULT_URLS = {
-        "development": "http://localhost:8000",
+        "development": "http://localhost:8010",
         "production": "https://api.ai-creator.com",
     }
 

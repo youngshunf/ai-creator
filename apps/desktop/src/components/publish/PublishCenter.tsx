@@ -2,74 +2,77 @@
  * 发布中心主组件
  * @author Ysf
  */
-import { useState } from 'react';
-import { Send, Clock, History, Settings } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Send, Clock, History } from 'lucide-react';
 import { PlatformCard, PlatformInfo } from './PlatformCard';
 import { ContentAdapter } from './ContentAdapter';
 import { PreviewPanel } from './PreviewPanel';
 import { ScheduleForm } from './ScheduleForm';
+import { PublishQueue } from './PublishQueue';
 import { useDraftStore } from '@/stores/useDraftStore';
+import { useAccountStore } from '@/stores/useAccountStore';
+import { usePublishStore } from '@/stores/usePublishStore';
+import { useProjectStore } from '@/stores/useProjectStore';
 import { cn } from '@/lib/utils';
 
-// 支持的平台列表
-const PLATFORMS: PlatformInfo[] = [
-  {
-    id: 'xiaohongshu',
-    name: '小红书',
-    icon: '📕',
-    color: '#FF2442',
-    connected: false,
-  },
-  {
-    id: 'wechat_mp',
-    name: '微信公众号',
-    icon: '💬',
-    color: '#07C160',
-    connected: false,
-  },
-  {
-    id: 'weibo',
-    name: '微博',
-    icon: '🔴',
-    color: '#E6162D',
-    connected: false,
-  },
-];
+// 平台图标和颜色映射
+const PLATFORM_META: Record<string, { icon: string; color: string }> = {
+  xiaohongshu: { icon: '📕', color: '#FF2442' },
+  wechat: { icon: '💬', color: '#07C160' },
+  douyin: { icon: '🎵', color: '#000000' },
+};
 
 type TabType = 'publish' | 'schedule' | 'history';
 
 export function PublishCenter() {
   const [activeTab, setActiveTab] = useState<TabType>('publish');
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
-  const [platforms, setPlatforms] = useState<PlatformInfo[]>(PLATFORMS);
-  const [isPublishing, setIsPublishing] = useState(false);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
 
   const { getCurrentDraft } = useDraftStore();
+  const { accounts, fetchAccounts, startLogin } = useAccountStore();
+  const { tasks, loading: publishing, publishNow, retryTask } = usePublishStore();
+  const { currentProject } = useProjectStore();
   const currentDraft = getCurrentDraft();
 
-  const handlePlatformSelect = (platformId: string) => {
-    setSelectedPlatforms((prev) =>
-      prev.includes(platformId)
-        ? prev.filter((id) => id !== platformId)
-        : [...prev, platformId]
+  useEffect(() => {
+    if (currentProject?.id) {
+      fetchAccounts(String(currentProject.id));
+    }
+  }, [currentProject?.id, fetchAccounts]);
+
+  // 转换账号为平台卡片格式
+  const platforms: PlatformInfo[] = accounts.map((acc) => ({
+    id: acc.id,
+    name: acc.account_name || acc.platform,
+    icon: PLATFORM_META[acc.platform]?.icon || '📱',
+    color: PLATFORM_META[acc.platform]?.color || '#666',
+    connected: acc.session_valid,
+  }));
+
+  const handlePlatformSelect = (accountId: string) => {
+    setSelectedAccountIds((prev) =>
+      prev.includes(accountId)
+        ? prev.filter((id) => id !== accountId)
+        : [...prev, accountId]
     );
   };
 
-  const handleConnect = (platformId: string) => {
-    // TODO: 实现平台绑定流程
-    console.log('Connect platform:', platformId);
+  const handleConnect = async (accountId: string) => {
+    const account = accounts.find((a) => a.id === accountId);
+    if (account) {
+      await startLogin(account.platform);
+    }
   };
 
   const handlePublish = async () => {
-    if (selectedPlatforms.length === 0 || !currentDraft) return;
-
-    setIsPublishing(true);
-    try {
-      // TODO: 调用发布 API
-      console.log('Publishing to:', selectedPlatforms);
-    } finally {
-      setIsPublishing(false);
-    }
+    if (selectedAccountIds.length === 0 || !currentDraft) return;
+    const selectedAccounts = accounts
+      .filter((a) => selectedAccountIds.includes(a.id))
+      .map((a) => ({ id: a.id, platform: a.platform }));
+    await publishNow(
+      { title: currentDraft.title, content: currentDraft.content, images: [], hashtags: [] },
+      selectedAccounts
+    );
   };
 
   const tabs = [
@@ -110,27 +113,33 @@ export function PublishCenter() {
               <div>
                 <h3 className="text-lg font-semibold mb-4">选择发布平台</h3>
                 <div className="grid grid-cols-2 gap-3">
-                  {platforms.map((platform) => (
-                    <PlatformCard
-                      key={platform.id}
-                      platform={platform}
-                      selected={selectedPlatforms.includes(platform.id)}
-                      onSelect={handlePlatformSelect}
-                      onConnect={handleConnect}
-                    />
-                  ))}
+                  {platforms.length > 0 ? (
+                    platforms.map((platform) => (
+                      <PlatformCard
+                        key={platform.id}
+                        platform={platform}
+                        selected={selectedAccountIds.includes(platform.id)}
+                        onSelect={handlePlatformSelect}
+                        onConnect={handleConnect}
+                      />
+                    ))
+                  ) : (
+                    <p className="col-span-2 text-muted-foreground text-center py-4">
+                      暂无绑定账号，请先在账号管理中添加
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* 内容适配 */}
-              {selectedPlatforms.length > 0 && currentDraft && (
+              {selectedAccountIds.length > 0 && currentDraft && (
                 <ContentAdapter
                   content={{
                     title: currentDraft.title,
                     content: currentDraft.content,
                     images: [],
                   }}
-                  platforms={selectedPlatforms}
+                  platforms={selectedAccountIds}
                 />
               )}
 
@@ -138,9 +147,7 @@ export function PublishCenter() {
               <button
                 type="button"
                 onClick={handlePublish}
-                disabled={
-                  selectedPlatforms.length === 0 || !currentDraft || isPublishing
-                }
+                disabled={selectedAccountIds.length === 0 || !currentDraft || publishing}
                 className={cn(
                   'w-full py-3 rounded-lg font-medium transition-colors',
                   'bg-primary text-primary-foreground',
@@ -148,9 +155,9 @@ export function PublishCenter() {
                   'disabled:opacity-50 disabled:cursor-not-allowed'
                 )}
               >
-                {isPublishing
+                {publishing
                   ? '发布中...'
-                  : `发布到 ${selectedPlatforms.length} 个平台`}
+                  : `发布到 ${selectedAccountIds.length} 个平台`}
               </button>
             </div>
 
@@ -164,7 +171,7 @@ export function PublishCenter() {
                     content: currentDraft.content,
                     images: [],
                   }}
-                  platform={selectedPlatforms[0] || 'xiaohongshu'}
+                  platform={accounts.find((a) => selectedAccountIds.includes(a.id))?.platform || 'xiaohongshu'}
                 />
               ) : (
                 <div className="p-8 text-center text-muted-foreground border rounded-lg">
@@ -177,16 +184,13 @@ export function PublishCenter() {
 
         {activeTab === 'schedule' && (
           <ScheduleForm
-            platforms={selectedPlatforms}
+            platforms={selectedAccountIds}
             onSchedule={(time) => console.log('Schedule:', time)}
           />
         )}
 
         {activeTab === 'history' && (
-          <div className="text-center text-muted-foreground py-12">
-            <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>暂无发布历史</p>
-          </div>
+          <PublishQueue tasks={tasks} />
         )}
       </div>
     </div>

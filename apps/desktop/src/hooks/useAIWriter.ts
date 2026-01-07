@@ -5,6 +5,7 @@
 import { useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { WritingStyle, getStyleById } from '@/config/writingStyles';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export interface AIWriterOptions {
   topic: string;
@@ -84,6 +85,7 @@ export function useAIWriter(): UseAIWriterReturn {
               user_prompt: prompt,
             },
             user_id: 'local_user',
+            access_token: useAuthStore.getState().getToken() || '',
           },
         });
 

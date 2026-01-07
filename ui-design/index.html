@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作台 - CreatorFlow</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa',
+                            500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a',
+                        },
+                        secondary: {
+                            50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 400: '#a78bfa',
+                            500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9', 800: '#5b21b6', 900: '#4c1d95',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'soft': '0 2px 10px rgba(0, 0, 0, 0.03)',
+                        'soft-md': '0 4px 20px rgba(0, 0, 0, 0.05)',
+                        'soft-lg': '0 10px 30px rgba(0, 0, 0, 0.08)',
+                    }
+                }
+            }
+        }
+    </script>
+    <script>
+        function initTheme() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+        initTheme();
+
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: #334155;
+        }
+
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-slate-50 dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 font-sans antialiased h-screen flex overflow-hidden transition-colors duration-200">
+
+    <!-- Sidebar (Adaptive BG, Black Text in Light Mode) -->
+    <aside
+        class="w-64 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex flex-col shrink-0 transition-colors duration-200 z-20 shadow-soft h-full">
+        <!-- Logo -->
+        <div class="h-16 flex items-center px-6 shrink-0">
+            <div
+                class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-secondary-600 flex items-center justify-center mr-3 shadow-lg shadow-primary-500/20">
+                <i data-lucide="sparkles" class="w-5 h-5 text-white"></i>
+            </div>
+            <span
+                class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-secondary-600 dark:from-primary-400 dark:to-secondary-400">CreatorFlow</span>
+        </div>
+
+        <!-- Menu Items (Scrollable) -->
+        <div class="flex-1 overflow-y-auto px-4 py-2 space-y-1">
+            <!-- 1. 工作台 (Active) -->
+            <a href="index.html"
+                class="flex items-center px-3 py-2.5 bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-lg group transition-colors shadow-sm">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 mr-3"></i>
+                <span class="font-medium">工作台</span>
+            </a>
+
+            <!-- 2. 选题中心 -->
+            <a href="#"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="lightbulb"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">选题中心</span>
+            </a>
+
+            <!-- 3. 创作中心 -->
+            <a href="create.html"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="pen-tool"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">创作中心</span>
+            </a>
+
+            <!-- 4. 素材库 -->
+            <a href="assets.html"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="library"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">素材库</span>
+            </a>
+
+            <!-- 5. 灵感库 -->
+            <a href="#"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="sparkle"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">灵感库</span>
+            </a>
+
+            <!-- 6. 作品管理 -->
+            <a href="#"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="folder-open"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">作品管理</span>
+            </a>
+
+            <!-- 7. 发布中心 -->
+            <a href="#"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="send"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">发布中心</span>
+            </a>
+
+            <!-- 8. 数据看板 -->
+            <a href="data.html"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="bar-chart-2"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">数据看板</span>
+            </a>
+
+            <!-- 9. 平台账号管理 -->
+            <a href="accounts.html"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="users"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">平台账号管理</span>
+            </a>
+
+            <!-- 10. Agent 工作流 -->
+            <a href="#"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="bot"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">Agent 工作流</span>
+            </a>
+        </div>
+
+        <!-- Footer Area -->
+        <div class="p-4 shrink-0">
+
+            <div class="flex items-center px-3 py-3 mt-2 rounded-lg bg-slate-50 dark:bg-white/5">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 shrink-0 shadow-md">
+                </div>
+                <div class="ml-3 overflow-hidden">
+                    <p class="text-sm font-medium truncate text-slate-700 dark:text-slate-200">User Admin</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 truncate">Pro Plan</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-[#0B1120] transition-colors duration-200">
+        <!-- Header -->
+        <header
+            class="h-16 flex items-center justify-between px-6 bg-white/80 dark:bg-slate-900/50 backdrop-blur sticky top-0 z-10 transition-colors duration-200 border-b border-transparent dark:border-slate-800/50">
+            <!-- Sidebar / Top Nav Area (Empty for Dashboard as it is Root) -->
+            <div class="flex items-center">
+                <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">工作台</h2>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <!-- Project Switcher -->
+                <div class="relative group">
+                    <button
+                        class="flex items-center space-x-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors border border-transparent dark:border-white/5 hover:border-slate-200 dark:hover:border-white/10">
+                        <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                        <span class="font-medium text-sm">美妆种草号</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+                    </button>
+                    <!-- Dropdown Content -->
+                    <div
+                        class="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-soft-lg ring-1 ring-slate-900/5 dark:ring-white/10 p-1 hidden group-hover:block z-50 animate-in fade-in zoom-in-95 duration-100">
+                        <div
+                            class="px-2 py-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                            切换项目</div>
+                        <button
+                            class="w-full flex items-center px-3 py-2 rounded-lg bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white text-sm">
+                            <i data-lucide="check" class="w-4 h-4 mr-2 text-primary-500"></i>
+                            美妆种草号
+                        </button>
+                        <button
+                            class="w-full flex items-center px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-sm transition-colors">
+                            <div class="w-4 h-4 mr-2"></div>
+                            科技测评
+                        </button>
+                        <div class="h-px bg-slate-100 dark:bg-slate-700/50 my-1"></div>
+                        <button onclick="document.getElementById('create-project-modal').classList.remove('hidden')"
+                            class="w-full flex items-center px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 text-primary-600 dark:text-primary-400 text-sm transition-colors font-medium">
+                            <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
+                            创建新项目
+                        </button>
+                    </div>
+                </div>
+
+                <div class="h-4 w-px bg-slate-200 dark:bg-slate-700"></div>
+
+                <button onclick="toggleTheme()"
+                    class="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                    title="切换主题">
+                    <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                    <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+                </button>
+
+                <button
+                    class="relative p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                    <span
+                        class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+                </button>
+                <a href="create.html"
+                    class="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg font-medium transition-colors shadow-lg shadow-primary-600/20">
+                    <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
+                    新建创作
+                </a>
+            </div>
+        </header>
+
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-8">
+            <div class="max-w-7xl mx-auto space-y-8">
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div
+                        class="p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-soft hover:shadow-soft-md transition-all">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-slate-500 dark:text-slate-400 font-medium">昨日总阅读</span>
+                            <div
+                                class="p-2 rounded-lg bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400">
+                                <i data-lucide="eye" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-end items-baseline space-x-2">
+                            <h3 class="text-3xl font-bold text-slate-900 dark:text-white">42.5k</h3>
+                            <span
+                                class="text-sm font-medium text-emerald-500 dark:text-emerald-400 flex items-center mb-1">
+                                <i data-lucide="trending-up" class="w-3 h-3 mr-1"></i>
+                                +12.5%
+                            </span>
+                        </div>
+                    </div>
+                    <!-- ... Other cards ... -->
+                    <div
+                        class="p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-soft hover:shadow-soft-md transition-all">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-slate-500 dark:text-slate-400 font-medium">新增粉丝</span>
+                            <div
+                                class="p-2 rounded-lg bg-secondary-50 dark:bg-secondary-500/10 text-secondary-600 dark:text-secondary-400">
+                                <i data-lucide="user-plus" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-end items-baseline space-x-2">
+                            <h3 class="text-3xl font-bold text-slate-900 dark:text-white">856</h3>
+                            <span
+                                class="text-sm font-medium text-emerald-500 dark:text-emerald-400 flex items-center mb-1">
+                                <i data-lucide="trending-up" class="w-3 h-3 mr-1"></i>
+                                +5.2%
+                            </span>
+                        </div>
+                    </div>
+
+                    <div
+                        class="p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-soft hover:shadow-soft-md transition-all">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-slate-500 dark:text-slate-400 font-medium">全平台互动</span>
+                            <div class="p-2 rounded-lg bg-pink-50 dark:bg-pink-500/10 text-pink-500 dark:text-pink-400">
+                                <i data-lucide="message-circle" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-end items-baseline space-x-2">
+                            <h3 class="text-3xl font-bold text-slate-900 dark:text-white">3.2k</h3>
+                            <span class="text-sm font-medium text-rose-500 dark:text-rose-400 flex items-center mb-1">
+                                <i data-lucide="trending-down" class="w-3 h-3 mr-1"></i>
+                                -2.1%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Drafts -->
+                <section>
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-bold text-slate-900 dark:text-white">近期草稿</h2>
+                        <a href="#" class="text-sm text-primary-600 dark:text-primary-400 hover:underline">查看全部</a>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div
+                            class="group relative rounded-xl bg-white dark:bg-slate-800 overflow-hidden shadow-soft hover:shadow-soft-lg transition-all duration-300 cursor-pointer">
+                            <div
+                                class="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 relative">
+                                <div
+                                    class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-sm">
+                                    <span
+                                        class="px-4 py-2 bg-white text-black rounded-lg font-medium text-sm shadow-lg">继续编辑</span>
+                                </div>
+                            </div>
+                            <div class="p-4">
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <span
+                                        class="px-2 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-[10px]">小红书</span>
+                                    <span class="text-[10px] text-slate-500 dark:text-slate-400">2小时前</span>
+                                </div>
+                                <h3
+                                    class="font-medium text-slate-900 dark:text-white line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                    适合夏天的5种清爽穿搭，显瘦又高级！</h3>
+                            </div>
+                        </div>
+
+                        <!-- More Items... -->
+                        <div
+                            class="group relative rounded-xl bg-white dark:bg-slate-800 overflow-hidden shadow-soft hover:shadow-soft-lg transition-all duration-300 cursor-pointer">
+                            <div
+                                class="aspect-video bg-gradient-to-br from-indigo-100 to-slate-200 dark:from-indigo-900 dark:to-slate-800 relative">
+                            </div>
+                            <div class="p-4">
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <span
+                                        class="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-black/40 text-slate-700 dark:text-white text-[10px]">公众号</span>
+                                    <span class="text-[10px] text-slate-500 dark:text-slate-400">昨天</span>
+                                </div>
+                                <h3
+                                    class="font-medium text-slate-900 dark:text-white line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                    深入解析 AI Agent 的未来发展趋势</h3>
+                            </div>
+                        </div>
+
+                        <a href="create.html"
+                            class="flex flex-col items-center justify-center rounded-xl bg-slate-50/50 dark:bg-white/5 border border-dashed border-slate-300 dark:border-slate-700 hover:border-primary-500 hover:bg-white dark:hover:bg-white/10 transition-all group h-full min-h-[240px]">
+                            <div
+                                class="w-12 h-12 rounded-full bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 group-hover:shadow-md transition-all">
+                                <i data-lucide="plus"
+                                    class="w-6 h-6 text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400"></i>
+                            </div>
+                            <span
+                                class="font-medium text-slate-500 dark:text-slate-400 group-hover:text-primary-600 dark:group-hover:text-primary-400">新建创作</span>
+                        </a>
+                    </div>
+                </section>
+
+                <!-- Platform Status -->
+                <section>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">平台状态</h2>
+                    <div
+                        class="rounded-xl bg-white dark:bg-slate-800 shadow-soft overflow-hidden divide-y divide-slate-100 dark:divide-slate-700/50">
+                        <div
+                            class="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <div class="flex items-center space-x-4">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center font-bold text-white text-xs shadow-md shadow-red-500/20">
+                                    书</div>
+                                <div>
+                                    <p class="font-medium text-slate-900 dark:text-white">美妆种草号</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400 flex items-center">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 shadow-sm"></span>
+                                        连接正常
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                class="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg transition-colors">
+                                同步数据
+                            </button>
+                        </div>
+                        <!-- ... -->
+                        <div
+                            class="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <div class="flex items-center space-x-4">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-black flex items-center justify-center font-bold text-white text-xs shadow-md shadow-slate-900/20 border border-slate-700">
+                                    抖音</div>
+                                <div>
+                                    <p class="font-medium text-slate-900 dark:text-white">科技测评</p>
+                                    <p class="text-xs text-red-500 dark:text-red-400 flex items-center">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5 shadow-sm"></span>
+                                        凭证已失效
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                class="px-3 py-1.5 text-sm text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-lg shadow-red-500/20">
+                                重新登录
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create Project Modal (Reused from previous step) -->
+    <div id="create-project-modal"
+        class="fixed inset-0 bg-slate-900/50 dark:bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center transition-opacity duration-300">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-[560px] shadow-2xl transform transition-all scale-100 p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white">创建新项目</h3>
+                <button onclick="document.getElementById('create-project-modal').classList.add('hidden')"
+                    class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">项目名称 <span
+                            class="text-red-500">*</span></label>
+                    <input type="text" placeholder="例如：美妆种草号、科技测评矩阵"
+                        class="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none dark:text-white transition-shadow">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">所属行业</label>
+                        <div class="relative">
+                            <select
+                                class="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none dark:text-white appearance-none cursor-pointer">
+                                <option>选择行业...</option>
+                                <option>美妆个护</option>
+                                <option>科技数码</option>
+                                <option>教育培训</option>
+                                <option>生活方式</option>
+                                <option>其他</option>
+                            </select>
+                            <i data-lucide="chevron-down"
+                                class="absolute right-3 top-3 w-4 h-4 text-slate-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">品牌名称</label>
+                        <input type="text" placeholder="可选，绑定品牌信息"
+                            class="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none dark:text-white transition-shadow">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">项目描述</label>
+                    <textarea rows="3" placeholder="简要描述项目的定位和目标..."
+                        class="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none dark:text-white transition-shadow resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">关注话题/关键词</label>
+                    <div
+                        class="flex flex-wrap gap-2 p-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg min-h-[42px]">
+                        <span
+                            class="inline-flex items-center px-2 py-1 rounded bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-300 text-xs font-medium">
+                            #夏日穿搭
+                            <button class="ml-1 hover:text-primary-900 dark:hover:text-white"><i data-lucide="x"
+                                    class="w-3 h-3"></i></button>
+                        </span>
+                        <input type="text" placeholder="输入后回车添加"
+                            class="bg-transparent border-none text-sm focus:ring-0 p-0 text-slate-600 dark:text-slate-300 placeholder-slate-400 min-w-[120px]">
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 flex justify-end space-x-3">
+                <button onclick="document.getElementById('create-project-modal').classList.add('hidden')"
+                    class="px-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 text-sm font-medium transition-colors">取消</button>
+                <button
+                    class="px-5 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium shadow-lg shadow-primary-600/20 transition-colors">确认创建</button>
+            </div>
+        </div>
+    </div>
+
+    <script>lucide.createIcons();</script>
+</body>
+
+</html>

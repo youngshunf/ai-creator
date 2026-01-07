@@ -165,11 +165,24 @@ class LLMGenerateTool(ToolInterface):
         temperature: float,
         system: Optional[str],
         tools: Optional[list] = None,
+        messages_history: Optional[list] = None,
     ) -> ToolResult:
         """通过 LLM 客户端执行"""
         logger.info(f"[LLM] Using LLM client, model={model}, tools={len(tools) if tools else 0}")
 
-        messages = [LLMMessage(role="user", content=prompt)]
+        # 构建消息列表
+        messages = []
+        if messages_history:
+            for m in messages_history:
+                if isinstance(m, dict):
+                    messages.append(LLMMessage(role=m.get("role", "user"), content=m.get("content", "")))
+                elif isinstance(m, LLMMessage):
+                    messages.append(m)
+                else:
+                    messages.append(LLMMessage(role=getattr(m, "role", "user"), content=getattr(m, "content", "")))
+        
+        if prompt:
+            messages.append(LLMMessage(role="user", content=prompt))
 
         response = await ctx.llm_client.chat(
             messages=messages,

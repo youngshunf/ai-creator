@@ -1,0 +1,67 @@
+# 选题推荐 Graph 定义
+# @author Ysf
+
+apiVersion: agent/v1
+kind: Graph
+metadata:
+  name: topic-suggestion
+  version: "1.0.0"
+  description: "AI 选题推荐"
+
+spec:
+  inputs:
+    keyword:
+      type: string
+      required: true
+      description: "关键词或领域"
+
+    count:
+      type: integer
+      required: false
+      default: 5
+      description: "推荐数量"
+
+    project_context:
+      type: object
+      required: false
+      description: "项目上下文（行业、品牌等）"
+
+  state:
+    topics:
+      type: array
+      description: "推荐选题列表"
+
+  nodes:
+    - name: generate_topics
+      tool: llm_generate
+      params:
+        prompt: |
+          你是一位资深内容策划专家。请根据关键词「${inputs.keyword}」推荐 ${inputs.count} 个热门选题。
+
+          要求：
+          1. 选题要有吸引力，能引发用户点击
+          2. 结合当前热点趋势
+          3. 适合自媒体平台发布
+
+          请以 JSON 格式返回，格式如下：
+          ```json
+          {
+            "topics": [
+              {"title": "选题标题", "reason": "推荐理由", "hot": true/false}
+            ]
+          }
+          ```
+        model: "${runtime.model_fast}"
+        max_tokens: 2000
+        response_format: "json"
+      outputs:
+        topics: "$.topics"
+
+  edges:
+    - from: START
+      to: generate_topics
+    - from: generate_topics
+      to: END
+
+  outputs:
+    topics: "${state.topics}"

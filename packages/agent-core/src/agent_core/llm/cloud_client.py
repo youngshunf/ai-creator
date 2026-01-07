@@ -122,10 +122,14 @@ class CloudLLMClient(LLMClientInterface):
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """获取或创建 HTTP 会话"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         # 确保 token 有效
         await self._ensure_valid_token()
 
         if self._session is None or self._session.closed:
+            logger.info(f"[CloudLLMClient] 创建新会话, access_token={bool(self.config.access_token)}, api_token={bool(self.config.api_token)}")
             headers = {
                 "Content-Type": "application/json",
                 "X-API-Key": self.config.api_token,  # LLM API Key
@@ -133,6 +137,7 @@ class CloudLLMClient(LLMClientInterface):
             # 如果有 access_token，添加 JWT 认证
             if self.config.access_token:
                 headers["Authorization"] = f"Bearer {self.config.access_token}"
+                logger.debug(f"[CloudLLMClient] 添加 Authorization 头, token前缀={self.config.access_token[:20] if self.config.access_token else 'None'}...")
 
             self._session = aiohttp.ClientSession(
                 headers=headers,
@@ -150,17 +155,31 @@ class CloudLLMClient(LLMClientInterface):
         Returns:
             str: 模型 ID
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.debug(f"[CloudLLMClient] 获取默认模型, 类型={model_type}, 缓存={self._default_model_cache}")
+        
         # 如果有缓存，直接返回
         if self._default_model_cache:
+            logger.debug(f"[CloudLLMClient] 返回缓存模型: {self._default_model_cache}")
             return self._default_model_cache
 
         # 从云端获取优先级最高的模型
-        model_info = await self.get_model_by_type(model_type)
-        if model_info:
-            self._default_model_cache = model_info.model_id
-            return model_info.model_id
+        logger.debug(f"[CloudLLMClient] 从云端获取模型, 类型={model_type}")
+        try:
+            model_info = await self.get_model_by_type(model_type)
+            if model_info:
+                self._default_model_cache = model_info.model_id
+                logger.info(f"[CloudLLMClient] 从云端获取到默认模型: {model_info.model_id}")
+                return model_info.model_id
+            else:
+                logger.warning(f"[CloudLLMClient] 云端未返回模型, 类型={model_type}")
+        except Exception as e:
+            logger.error(f"[CloudLLMClient] 从云端获取模型失败: {e}")
 
         # 回退到配置文件中的默认模型
+        logger.info(f"[CloudLLMClient] 回退到配置默认模型: {self.config.default_model}")
         return self.config.default_model
 
     async def chat(
@@ -324,17 +343,26 @@ class CloudLLMClient(LLMClientInterface):
         Returns:
             List[ModelInfo]: 模型信息列表
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         session = await self._get_session()
         url = f"{self.config.base_url}/api/v1/llm/models/available"
+        
+        logger.info(f"[CloudLLMClient] 获取可用模型列表, URL={url}")
 
         try:
             async with session.get(url) as response:
+                logger.info(f"[CloudLLMClient] 模型列表响应状态: {response.status}")
                 if response.status != 200:
+                    error_text = await response.text()
+                    logger.warning(f"[CloudLLMClient] 获取模型列表失败: {response.status} - {error_text}")
                     return []
                 data = await response.json()
 
             # 从 response.data.models 中提取模型列表
             models_data = data.get("data", {}).get("models", [])
+            logger.info(f"[CloudLLMClient] 获取到 {len(models_data)} 个模型")
             return [
                 ModelInfo(
                     model_id=m["model_id"],
@@ -350,7 +378,8 @@ class CloudLLMClient(LLMClientInterface):
                 for m in models_data
                 if m.get("enabled", True)
             ]
-        except Exception:
+        except Exception as e:
+            logger.error(f"[CloudLLMClient] 获取模型列表异常: {e}")
             return []
 
     async def get_model_by_type(self, model_type: ModelType) -> Optional[ModelInfo]:

@@ -1,8 +1,10 @@
 /**
- * Tailwind CSS 配置 - 基于创流设计规格（精致版）
+ * Tailwind CSS 配置 - Tech Startup + SaaS 风格
  * @author Ysf
+ * @updated 2026-01-07
  */
 import type { Config } from 'tailwindcss';
+import tailwindcssAnimate from 'tailwindcss-animate';
 
 export default {
   darkMode: ['class'],
@@ -11,18 +13,27 @@ export default {
   theme: {
     extend: {
       colors: {
-        // 品牌色
-        brand: {
-          blue: '#3B82F6',
-          purple: '#8B5CF6',
-          indigo: '#6366F1',
+        // SaaS 配色
+        primary: {
+          DEFAULT: '#2563EB',
+          50: '#EFF6FF',
+          100: '#DBEAFE',
+          200: '#BFDBFE',
+          300: '#93C5FD',
+          400: '#60A5FA',
+          500: '#3B82F6',
+          600: '#2563EB',
+          700: '#1D4ED8',
+          800: '#1E40AF',
+          900: '#1E3A8A',
         },
+        secondary: '#3B82F6',
+        cta: '#F97316',
         // 功能色
         success: '#10B981',
         error: '#DC2626',
         warning: '#F59E0B',
-        orange: '#F97316',
-        // 精细中性色
+        // 中性色
         slate: {
           50: '#F8FAFC',
           100: '#F1F5F9',
@@ -41,13 +52,9 @@ export default {
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
-        primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
-        },
-        secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
         },
         muted: {
           DEFAULT: 'hsl(var(--muted))',
@@ -57,36 +64,20 @@ export default {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',
         },
-        card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
-        },
-      },
-      borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
-        xl: '12px',
-        '2xl': '16px',
-        '3xl': '20px',
-      },
-      boxShadow: {
-        xs: '0 1px 2px rgba(15, 23, 42, 0.04)',
-        sm: '0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04)',
-        md: '0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -1px rgba(15, 23, 42, 0.04)',
-        lg: '0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04)',
-        xl: '0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 10px 10px -5px rgba(15, 23, 42, 0.03)',
-        brand: '0 4px 14px rgba(59, 130, 246, 0.25)',
-        'brand-lg': '0 8px 25px rgba(59, 130, 246, 0.35)',
       },
       fontFamily: {
         sans: [
-          'Inter',
+          'DM Sans',
           '-apple-system',
           'BlinkMacSystemFont',
           'PingFang SC',
           'Noto Sans SC',
           'Microsoft YaHei',
+          'sans-serif',
+        ],
+        heading: [
+          'Space Grotesk',
+          '-apple-system',
           'sans-serif',
         ],
         mono: ['SF Mono', 'Fira Code', 'Consolas', 'monospace'],
@@ -103,9 +94,29 @@ export default {
         '4xl': ['2rem', { lineHeight: '2.25rem' }],
         '5xl': ['2.5rem', { lineHeight: '2.75rem' }],
       },
+      borderRadius: {
+        sm: '6px',
+        md: '8px',
+        lg: '12px',
+        xl: '16px',
+        '2xl': '20px',
+      },
+      boxShadow: {
+        sm: '0 1px 2px rgba(30, 41, 59, 0.05)',
+        md: '0 4px 6px -1px rgba(30, 41, 59, 0.08)',
+        lg: '0 10px 15px -3px rgba(30, 41, 59, 0.1)',
+        xl: '0 20px 25px -5px rgba(30, 41, 59, 0.1)',
+        glass: '0 8px 32px rgba(30, 41, 59, 0.12)',
+        brand: '0 4px 14px rgba(37, 99, 235, 0.25)',
+        'brand-lg': '0 8px 25px rgba(37, 99, 235, 0.35)',
+      },
+      spacing: {
+        sidebar: '220px',
+        'sidebar-collapsed': '64px',
+      },
       letterSpacing: {
         tighter: '-0.04em',
-        tight: '-0.02em',
+        tight: '-0.025em',
         normal: '-0.011em',
         wide: '0.02em',
       },
@@ -118,20 +129,30 @@ export default {
         smooth: 'cubic-bezier(0.4, 0, 0.2, 1)',
       },
       animation: {
-        'fade-in': 'fadeIn 0.2s ease-out',
-        'slide-up': 'slideUp 0.3s ease-out',
+        'fade-in': 'fadeIn 200ms ease-out',
+        'slide-in': 'slideIn 200ms ease-out',
+        'slide-up': 'slideUp 200ms ease-out',
+        'slide-down': 'slideDown 200ms ease-out',
       },
       keyframes: {
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
+        slideIn: {
+          '0%': { opacity: '0', transform: 'translateX(-8px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
         slideUp: {
-          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideDown: {
+          '0%': { opacity: '0', transform: 'translateY(-8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [tailwindcssAnimate],
 } satisfies Config;

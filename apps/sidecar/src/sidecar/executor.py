@@ -311,6 +311,15 @@ class LocalExecutor(ExecutorInterface):
         llm_config_manager = LLMConfigManager()
         llm_config = llm_config_manager.load(environment)
 
+        # 优先使用 request.extra 中的 access_token (来自前端传递)
+        access_token = request.extra.get("access_token")
+        if access_token:
+            # 如果有前端传递的 token，临时覆盖配置
+            llm_config.access_token = access_token
+            # 注意：前端传递的 access_token 通常没有过期时间信息，或者我们假设它是新鲜的
+            # 如果需要，也可以传递过期时间
+            logger.info("Using access_token provided by frontend request")
+        
         # 将 LLM API Token 作为 anthropic 密钥
         if llm_config.api_token:
             api_keys["anthropic"] = llm_config.api_token
@@ -323,8 +332,10 @@ class LocalExecutor(ExecutorInterface):
         model_default = "claude-opus-4-5-20251101-thinking"  # 后备默认值
         model_fast = "claude-haiku-4-5-20251001"  # 后备默认值
 
-        if llm_config.api_token:
+        # 当有 access_token（云端网关）或 api_token（直连）时创建客户端
+        if llm_config.access_token or llm_config.api_token:
             llm_client = CloudLLMClient(llm_config)
+            logger.info(f"Created LLM client (access_token={bool(llm_config.access_token)}, api_token={bool(llm_config.api_token)})")
             # 动态获取模型
             try:
                 from agent_core.llm.interface import ModelType

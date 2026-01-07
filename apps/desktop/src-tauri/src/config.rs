@@ -18,7 +18,7 @@ impl ApiConfig {
         let env = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string());
         let base_url = match env.as_str() {
             "production" => "https://api.ai-creator.com".to_string(),
-            _ => "http://localhost:8000".to_string(),
+            _ => "http://localhost:8010".to_string(),
         };
 
         Self {

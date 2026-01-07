@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创作中心 - CreatorFlow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 50: '#eff6ff', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 900: '#1e3a8a' },
+                        secondary: { 500: '#8b5cf6', 600: '#7c3aed' },
+                    },
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    boxShadow: {
+                        'soft': '0 2px 10px rgba(0, 0, 0, 0.03)',
+                        'soft-md': '0 4px 20px rgba(0, 0, 0, 0.05)',
+                        'soft-lg': '0 10px 30px rgba(0, 0, 0, 0.08)',
+                    }
+                }
+            }
+        }
+    </script>
+    <script>
+        function initTheme() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+        initTheme();
+
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: #334155;
+        }
+
+        .typing-cursor::after {
+            content: '|';
+            animation: blink 1s step-start infinite;
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body
+    class="bg-slate-50 dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 font-sans antialiased h-screen flex overflow-hidden transition-colors duration-200">
+
+    <!-- Sidebar (Unified) -->
+    <aside
+        class="w-64 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex flex-col shrink-0 transition-colors duration-200 z-20 shadow-soft h-full">
+        <div class="h-16 flex items-center px-6 shrink-0">
+            <span
+                class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-secondary-600 dark:from-primary-400 dark:to-secondary-400">CreatorFlow</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-4 py-2 space-y-1">
+            <a href="index.html"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="layout-dashboard"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">工作台</span>
+            </a>
+            <a href="#"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="lightbulb"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">选题中心</span>
+            </a>
+            <!-- Active Item -->
+            <a href="create.html"
+                class="flex items-center px-3 py-2.5 bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400 rounded-lg group transition-colors shadow-sm">
+                <i data-lucide="pen-tool" class="w-5 h-5 mr-3"></i>
+                <span class="font-medium">创作中心</span>
+            </a>
+            <a href="assets.html"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="library"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">素材库</span>
+            </a>
+            <a href="#"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="sparkle"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">灵感库</span>
+            </a>
+            <a href="#"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="folder-open"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">作品管理</span>
+            </a>
+            <a href="#"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="send"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">发布中心</span>
+            </a>
+            <a href="data.html"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="bar-chart-2"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">数据看板</span>
+            </a>
+            <a href="accounts.html"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="users"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">平台账号管理</span>
+            </a>
+            <a href="#"
+                class="flex items-center px-3 py-2.5 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg group transition-colors">
+                <i data-lucide="bot"
+                    class="w-5 h-5 mr-3 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors"></i>
+                <span class="font-medium">Agent 工作流</span>
+            </a>
+        </div>
+
+        <div class="p-4 shrink-0">
+
+        </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-[#0B1120] transition-colors duration-200">
+        <!-- Header with Sub-menus and Project Switcher -->
+        <header
+            class="h-14 flex items-center justify-between px-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur shrink-0 transition-colors duration-200 shadow-soft z-20">
+            <!-- Left: title & Tabs -->
+            <div class="flex items-center">
+                <span class="text-lg font-bold text-slate-800 dark:text-slate-100 mr-8">创作中心</span>
+                <div class="flex space-x-1">
+                    <button
+                        class="px-4 py-1.5 rounded-full bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400 text-sm font-medium transition-colors">
+                        文章创作
+                    </button>
+                    <button
+                        class="px-4 py-1.5 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 text-sm font-medium transition-colors">
+                        图片创作
+                    </button>
+                    <button
+                        class="px-4 py-1.5 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 text-sm font-medium transition-colors">
+                        视频创作
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: Project Switcher & Actions -->
+            <div class="flex items-center space-x-2">
+                <!-- Project Switcher (Mini) -->
+                <div class="relative group mr-2">
+                    <button
+                        class="flex items-center space-x-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors text-xs border border-transparent dark:border-white/5 hover:border-slate-200 dark:hover:border-white/10">
+                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                        <span class="font-medium">美妆种草号</span>
+                        <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+                    </button>
+                    <!-- Dropdown Content (Simplified) -->
+                    <div
+                        class="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-soft-lg ring-1 ring-slate-900/5 dark:ring-white/10 p-1 hidden group-hover:block z-50 animate-in fade-in zoom-in-95 duration-100">
+                        <button
+                            class="w-full flex items-center px-3 py-2 rounded-lg bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white text-xs">
+                            <i data-lucide="check" class="w-3 h-3 mr-2 text-primary-500"></i>
+                            美妆种草号
+                        </button>
+                        <button
+                            class="w-full flex items-center px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-xs transition-colors">
+                            <div class="w-3 h-3 mr-2"></div>
+                            科技测评
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="toggleTheme()"
+                    class="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors mr-1"
+                    title="切换主题">
+                    <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                    <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+                </button>
+
+                <div class="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-2"></div>
+
+                <button
+                    class="px-4 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">保存草稿</button>
+                <a href="publish.html"
+                    class="px-4 py-1.5 bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium rounded-lg flex items-center shadow-lg shadow-primary-600/20">
+                    去发布
+                    <i data-lucide="arrow-right" class="w-4 h-4 ml-1.5"></i>
+                </a>
+            </div>
+        </header>
+
+        <!-- Editor Content (Split View) -->
+        <div class="flex-1 flex overflow-hidden">
+            <!-- Left: Outline (Collapsible) -->
+            <aside
+                class="w-64 bg-slate-50/50 dark:bg-slate-900/30 hidden lg:flex flex-col transition-colors border-r border-transparent dark:border-slate-800/50">
+                <div class="p-4">
+                    <h3 class="font-bold text-sm text-slate-500 dark:text-slate-400 uppercase tracking-wider">大纲</h3>
+                </div>
+                <div class="flex-1 overflow-y-auto p-2 space-y-1">
+                    <button
+                        class="w-full text-left px-3 py-2 rounded-lg bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400 text-sm font-medium border-l-2 border-primary-500 transition-colors shadow-sm">
+                        1. 引言：夏日的烦恼
+                    </button>
+                    <button
+                        class="w-full text-left px-3 py-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 text-sm transition-colors border-l-2 border-transparent">
+                        2. 浅色系搭配法则
+                    </button>
+                    <button
+                        class="w-full text-left px-3 py-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/5 text-sm transition-colors border-l-2 border-transparent">
+                        3. 材质选择：棉麻与丝绸
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Center: Editor -->
+            <main
+                class="flex-1 bg-white dark:bg-[#0B1120] overflow-y-auto relative transition-colors shadow-soft z-10 mx-1 rounded-t-xl mt-1">
+                <div class="max-w-3xl mx-auto py-12 px-8 min-h-full">
+                    <!-- Title Input -->
+                    <input type="text" value="适合夏天的5种清爽穿搭，显瘦又高级！"
+                        class="w-full bg-transparent text-3xl font-bold text-slate-900 dark:text-white mb-8 border-none focus:ring-0 placeholder-slate-400 dark:placeholder-slate-600 p-0 transition-colors">
+
+                    <!-- Main Editor Area -->
+                    <div class="prose prose-lg dark:prose-invert max-w-none focus:outline-none min-h-[500px]"
+                        contenteditable="true">
+                        <p class="text-slate-600 dark:text-slate-300">炎热的夏天来了，如何穿得既清凉又时髦，是每个女孩的必修课...</p>
+                        <!-- ... content ... -->
+                        <div
+                            class="my-6 p-1 rounded-xl bg-slate-50 dark:bg-white/5 flex flex-col items-center justify-center h-48 cursor-pointer group relative overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 hover:ring-primary-500 dark:hover:ring-primary-500 transition-all">
+                            <div
+                                class="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-secondary-500/10 dark:from-primary-900/20 dark:to-secondary-900/20 group-hover:opacity-100 opacity-0 transition-opacity">
+                            </div>
+                            <i data-lucide="image-plus"
+                                class="w-8 h-8 text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400 mb-2 z-10"></i>
+                            <span
+                                class="text-sm font-medium text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400 z-10">AI
+                                生成配图</span>
+                        </div>
+                        <h2>1. 浅色系搭配法则</h2>
+                        <p>选择白色或淡蓝色的单品...</p>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Right: AI Copilot -->
+            <aside class="w-80 bg-white dark:bg-slate-900 flex flex-col shrink-0 transition-colors shadow-soft z-20">
+                <!-- Copilot Tabs -->
+                <div class="flex p-1 m-2 bg-slate-100 dark:bg-slate-900 rounded-lg">
+                    <button
+                        class="flex-1 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm transition-colors">AI
+                        助手</button>
+                    <button
+                        class="flex-1 py-1.5 text-xs font-medium rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">素材灵感</button>
+                </div>
+                <!-- Chat & Input ... -->
+                <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                    <div class="flex items-start space-x-3">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-gradient-to-tr from-secondary-500 to-pink-500 flex items-center justify-center shrink-0 shadow-md">
+                            <i data-lucide="bot" class="w-4 h-4 text-white"></i>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-white/5 rounded-2xl rounded-tl-none p-3 transition-colors">
+                            <p class="text-sm text-slate-700 dark:text-slate-200">这个选题很棒！我为你准备了 3 个开头段落，你喜欢哪个？</p>
+                            <!-- ... -->
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 transition-colors">
+                    <div class="relative">
+                        <textarea rows="3" placeholder="告诉 AI 助手做什么..."
+                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 text-sm focus:ring-1 focus:ring-secondary-500 outline-none resize-none transition-colors text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"></textarea>
+                        <button
+                            class="absolute bottom-2 right-2 p-1.5 bg-secondary-600 hover:bg-secondary-500 rounded-lg text-white transition-colors shadow-md">
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+    <script>lucide.createIcons();</script>
+</body>
+
+</html>

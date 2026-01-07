@@ -280,6 +280,33 @@ pnpm run tauri:build
 
 ---
 
+## ⚠️ 注意事项
+
+### Tauri invoke 阻塞 UI 渲染
+
+**问题**: 调用 `invoke()` 会阻塞 JavaScript 主线程，导致 React 状态更新后浏览器没有机会重绘，loading 状态不显示。
+
+**解决方案**: 在调用 `invoke` 前添加 50ms 延迟，让浏览器先完成渲染：
+
+```typescript
+// ❌ 错误：loading 状态不会显示
+setLoading(true);
+await invoke('some_command');
+
+// ✅ 正确：先让浏览器渲染 loading 状态
+setLoading(true);
+await new Promise(r => setTimeout(r, 50));
+await invoke('some_command');
+```
+
+### React 状态与 Set 类型
+
+**问题**: React 无法检测 `Set` 类型的变化，使用 `Set` 作为状态会导致 UI 不更新。
+
+**解决方案**: 使用数组 `string[]` 代替 `Set<string>`。
+
+---
+
 ## 🔼 导航
 
 [← 返回根目录](../../CLAUDE.md)

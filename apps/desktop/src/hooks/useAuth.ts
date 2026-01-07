@@ -3,66 +3,8 @@
  * @author Ysf
  */
 import { useState, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-
-export interface User {
-  id: number;
-  uuid: string;
-  username: string;
-  nickname: string;
-  phone?: string;
-  email?: string;
-  avatar?: string;
-  is_new_user: boolean;
-}
-
-interface AuthState {
-  user: User | null;
-  token: string | null;
-  llmToken: string | null;
-  isAuthenticated: boolean;
-  setAuth: (user: User, token: string, llmToken: string) => void;
-  logout: () => void;
-}
-
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      token: null,
-      llmToken: null,
-      isAuthenticated: false,
-
-      setAuth: (user, token, llmToken) =>
-        set({
-          user,
-          token,
-          llmToken,
-          isAuthenticated: true,
-        }),
-
-      logout: () =>
-        set({
-          user: null,
-          token: null,
-          llmToken: null,
-          isAuthenticated: false,
-        }),
-    }),
-    {
-      name: 'ai-creator-auth',
-    }
-  )
-);
-
-interface LoginResponse {
-  user: User;
-  token: string;
-  llm_token: string;
-  is_new_user: boolean;
-}
+import { useAuthStore } from '@/stores/useAuthStore';
+import { loginApi, logoutApi, sendVerificationCodeApi, type LoginResult } from '@/api/auth';
 
 export function useAuth() {
   const { user, isAuthenticated, setAuth, logout: storeLogout } = useAuthStore();
@@ -75,7 +17,7 @@ export function useAuth() {
     setIsSendingCode(true);
     setError(null);
     try {
-      await invoke('send_verification_code', { phone });
+      await sendVerificationCodeApi(phone);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -85,14 +27,52 @@ export function useAuth() {
     }
   }, []);
 
+  // 处理登录成功逻辑
+  const handleLoginSuccess = useCallback(async (resp: LoginResult) => {
+    const expiresAt = new Date(resp.access_token_expire_time).getTime();
+    setAuth(resp.user, resp.access_token, resp.refresh_token, expiresAt);
+
+    // 同步用户信息到本地 SQLite
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('sync_user_to_local', {
+        userId: resp.user.uuid,
+        email: resp.user.email || null,
+        username: resp.user.username || null,
+        nickname: resp.user.nickname || null,
+        avatarUrl: resp.user.avatar || null,
+      });
+      console.log('[Auth] User synced to local database');
+    } catch (err) {
+      console.warn('[Auth] Failed to sync user to local:', err);
+    }
+
+    // 同步 Token 到 Sidecar (用于 LLM 调用)
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('sync_auth_tokens', {
+        request: {
+          api_token: resp.llm_token || null,
+          access_token: resp.access_token,
+          access_token_expire_time: resp.access_token_expire_time,
+          refresh_token: resp.refresh_token,
+          refresh_token_expire_time: resp.refresh_token_expire_time,
+        }
+      });
+      console.log('[Auth] Tokens synced to sidecar');
+    } catch (err) {
+      console.warn('[Auth] Failed to sync tokens to sidecar:', err);
+    }
+  }, [setAuth]);
+
   // 手机号登录
   const phoneLogin = useCallback(
     async (phone: string, code: string): Promise<boolean> => {
       setIsLoading(true);
       setError(null);
       try {
-        const resp = await invoke<LoginResponse>('phone_login', { phone, code });
-        setAuth(resp.user, resp.token, resp.llm_token);
+        const resp = await loginApi({ phone, code });
+        handleLoginSuccess(resp);
         return true;
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
@@ -101,7 +81,7 @@ export function useAuth() {
         setIsLoading(false);
       }
     },
-    [setAuth]
+    [handleLoginSuccess]
   );
 
   // 密码登录
@@ -110,8 +90,8 @@ export function useAuth() {
       setIsLoading(true);
       setError(null);
       try {
-        const resp = await invoke<LoginResponse>('password_login', { username, password });
-        setAuth(resp.user, resp.token, resp.llm_token);
+        const resp = await loginApi({ username, password });
+        handleLoginSuccess(resp);
         return true;
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
@@ -120,17 +100,19 @@ export function useAuth() {
         setIsLoading(false);
       }
     },
-    [setAuth]
+    [handleLoginSuccess]
   );
 
   // 登出
   const logout = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     try {
-      await invoke('logout');
+      await logoutApi();
       storeLogout();
     } catch (err) {
       console.error('Logout error:', err);
+      // 即使 API 失败也清除本地状态
+      storeLogout();
     } finally {
       setIsLoading(false);
     }

@@ -1,0 +1,82 @@
+# 配图生成 Graph 定义
+# @author Ysf
+
+apiVersion: agent/v1
+kind: Graph
+metadata:
+  name: image-generation
+  version: "1.0.0"
+  description: "AI 配图生成"
+
+spec:
+  inputs:
+    content:
+      type: string
+      required: true
+      description: "文章内容"
+
+    count:
+      type: integer
+      required: false
+      default: 3
+      description: "生成图片数量"
+
+    style:
+      type: string
+      required: false
+      default: "modern"
+      description: "图片风格"
+
+  state:
+    prompts:
+      type: array
+      description: "图片生成提示词"
+
+    images:
+      type: array
+      description: "生成的图片URL"
+
+  nodes:
+    - name: generate_prompts
+      tool: llm_generate
+      params:
+        prompt: |
+          根据以下文章内容，生成 ${inputs.count} 个配图的描述提示词。
+
+          文章内容：
+          ${inputs.content}
+
+          要求：
+          1. 图片风格：${inputs.style}
+          2. 适合自媒体平台使用
+          3. 视觉吸引力强
+
+          请以 JSON 格式返回：
+          ```json
+          {"prompts": ["图片1描述", "图片2描述", "图片3描述"]}
+          ```
+        model: "${runtime.model_fast}"
+        max_tokens: 1000
+        response_format: "json"
+      outputs:
+        prompts: "$.prompts"
+
+    - name: generate_images
+      tool: image_generate
+      params:
+        prompts: "${state.prompts}"
+        style: "${inputs.style}"
+      outputs:
+        images: "$.images"
+
+  edges:
+    - from: START
+      to: generate_prompts
+    - from: generate_prompts
+      to: generate_images
+    - from: generate_images
+      to: END
+
+  outputs:
+    images: "${state.images}"
+    prompts: "${state.prompts}"

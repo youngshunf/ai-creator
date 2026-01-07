@@ -6,7 +6,7 @@ import { createRootRoute, Outlet, useNavigate, useLocation } from '@tanstack/rea
 import { TanStackRouterDevtools } from '@tanstack/router-devtools';
 import { useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { useAuthStore } from '@/hooks/useAuth';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 function RootComponent() {
   const navigate = useNavigate();

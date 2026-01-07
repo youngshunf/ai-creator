@@ -4,7 +4,8 @@
  */
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
-import { useAuth, useAuthStore } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
@@ -68,17 +69,15 @@ function LoginPage() {
         {/* Tab 切换 */}
         <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
           <button
-            className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
-              tab === 'phone' ? 'bg-white text-blue-600 shadow' : 'text-gray-600'
-            }`}
+            className={`flex-1 py-2 rounded-md text-sm font-medium transition ${tab === 'phone' ? 'bg-white text-blue-600 shadow' : 'text-gray-600'
+              }`}
             onClick={() => { setTab('phone'); clearError(); }}
           >
             手机号登录
           </button>
           <button
-            className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
-              tab === 'password' ? 'bg-white text-blue-600 shadow' : 'text-gray-600'
-            }`}
+            className={`flex-1 py-2 rounded-md text-sm font-medium transition ${tab === 'password' ? 'bg-white text-blue-600 shadow' : 'text-gray-600'
+              }`}
             onClick={() => { setTab('password'); clearError(); }}
           >
             密码登录

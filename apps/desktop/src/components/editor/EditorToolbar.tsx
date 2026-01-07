@@ -108,7 +108,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
   return (
     <div
       className={cn(
-        'flex items-center flex-wrap gap-1 p-2 border-b bg-background',
+        'flex items-center flex-wrap gap-1 px-4 py-2 bg-slate-50 dark:bg-slate-900/50',
         className
       )}
     >

@@ -10,14 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as PublishIndexRouteImport } from './routes/publish/index'
 import { Route as CreationIndexRouteImport } from './routes/creation/index'
+import { Route as SettingsProjectRouteImport } from './routes/settings/project'
+import { Route as ProjectCreateRouteImport } from './routes/project.create'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountsRoute = AccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -40,17 +48,33 @@ const CreationIndexRoute = CreationIndexRouteImport.update({
   path: '/creation/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsProjectRoute = SettingsProjectRouteImport.update({
+  id: '/settings/project',
+  path: '/settings/project',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectCreateRoute = ProjectCreateRouteImport.update({
+  id: '/project/create',
+  path: '/project/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/accounts': typeof AccountsRoute
   '/login': typeof LoginRoute
+  '/project/create': typeof ProjectCreateRoute
+  '/settings/project': typeof SettingsProjectRoute
   '/creation': typeof CreationIndexRoute
   '/publish': typeof PublishIndexRoute
   '/settings': typeof SettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/accounts': typeof AccountsRoute
   '/login': typeof LoginRoute
+  '/project/create': typeof ProjectCreateRoute
+  '/settings/project': typeof SettingsProjectRoute
   '/creation': typeof CreationIndexRoute
   '/publish': typeof PublishIndexRoute
   '/settings': typeof SettingsIndexRoute
@@ -58,22 +82,53 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/accounts': typeof AccountsRoute
   '/login': typeof LoginRoute
+  '/project/create': typeof ProjectCreateRoute
+  '/settings/project': typeof SettingsProjectRoute
   '/creation/': typeof CreationIndexRoute
   '/publish/': typeof PublishIndexRoute
   '/settings/': typeof SettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/creation' | '/publish' | '/settings'
+  fullPaths:
+    | '/'
+    | '/accounts'
+    | '/login'
+    | '/project/create'
+    | '/settings/project'
+    | '/creation'
+    | '/publish'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/creation' | '/publish' | '/settings'
-  id: '__root__' | '/' | '/login' | '/creation/' | '/publish/' | '/settings/'
+  to:
+    | '/'
+    | '/accounts'
+    | '/login'
+    | '/project/create'
+    | '/settings/project'
+    | '/creation'
+    | '/publish'
+    | '/settings'
+  id:
+    | '__root__'
+    | '/'
+    | '/accounts'
+    | '/login'
+    | '/project/create'
+    | '/settings/project'
+    | '/creation/'
+    | '/publish/'
+    | '/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountsRoute: typeof AccountsRoute
   LoginRoute: typeof LoginRoute
+  ProjectCreateRoute: typeof ProjectCreateRoute
+  SettingsProjectRoute: typeof SettingsProjectRoute
   CreationIndexRoute: typeof CreationIndexRoute
   PublishIndexRoute: typeof PublishIndexRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
@@ -86,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounts': {
+      id: '/accounts'
+      path: '/accounts'
+      fullPath: '/accounts'
+      preLoaderRoute: typeof AccountsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -116,12 +178,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreationIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/project': {
+      id: '/settings/project'
+      path: '/settings/project'
+      fullPath: '/settings/project'
+      preLoaderRoute: typeof SettingsProjectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/project/create': {
+      id: '/project/create'
+      path: '/project/create'
+      fullPath: '/project/create'
+      preLoaderRoute: typeof ProjectCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountsRoute: AccountsRoute,
   LoginRoute: LoginRoute,
+  ProjectCreateRoute: ProjectCreateRoute,
+  SettingsProjectRoute: SettingsProjectRoute,
   CreationIndexRoute: CreationIndexRoute,
   PublishIndexRoute: PublishIndexRoute,
   SettingsIndexRoute: SettingsIndexRoute,

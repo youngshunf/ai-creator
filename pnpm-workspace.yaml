@@ -9,6 +9,7 @@ packages:
   # Monorepo 管理的应用
   - 'apps/desktop'
   - 'apps/landing'
+  - 'apps/mobile-app'
 
   # 注意：services/ 和 external/ 下的项目有独立仓库
   # 不纳入 pnpm workspace

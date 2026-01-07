@@ -1,123 +1,104 @@
 /**
- * 顶部导航栏组件 - 支持字体大小调整和用户菜单
+ * 顶部导航组件 - 简化设计
  * @author Ysf
+ * @updated 2026-01-07
  */
 import { useState, useRef, useEffect } from 'react';
-import { Bell, Search, User, Type, LogOut, Settings } from 'lucide-react';
-import { useNavigate } from '@tanstack/react-router';
-import { useAppStore, FontSize } from '@/stores/useAppStore';
-import { useAuth, useAuthStore } from '@/hooks/useAuth';
-import { cn } from '@/lib/utils';
+import { Bell, Sun, Moon, Type } from 'lucide-react';
+import { useAppStore } from '@/stores/useAppStore';
+import { useRouterState } from '@tanstack/react-router';
+import { ProjectSelector } from './ProjectSelector';
 
-const fontSizeOptions: { value: FontSize; label: string }[] = [
-  { value: 'small', label: '小' },
-  { value: 'medium', label: '中' },
-  { value: 'large', label: '大' },
+const PAGE_TITLES: Record<string, string> = {
+  '/': '工作台',
+  '/topics': '选题中心',
+  '/creation': '创作中心',
+  '/accounts': '账号管理',
+  '/assets': '素材库',
+  '/inspiration': '灵感库',
+  '/works': '作品管理',
+  '/analytics': '数据看板',
+  '/publish': '发布中心',
+  '/agent': 'Agent',
+  '/settings': '设置',
+};
+
+const FONT_SIZES = [
+  { label: '小', value: 14 },
+  { label: '中', value: 16 },
+  { label: '大', value: 18 },
+  { label: '特大', value: 20 },
 ];
 
 export function Header() {
-  const navigate = useNavigate();
-  const { fontSize, setFontSize } = useAppStore();
-  const user = useAuthStore((s) => s.user);
-  const { logout } = useAuth();
-  const [showMenu, setShowMenu] = useState(false);
+  const { theme, toggleTheme, fontSize, setFontSize } = useAppStore();
+  const routerState = useRouterState();
+  const currentPath = routerState.location.pathname;
+  const [showFontMenu, setShowFontMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // 点击外部关闭菜单
+  const title = PAGE_TITLES[currentPath] || '创流';
+  const isDark = theme === 'dark' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
+        setShowFontMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate({ to: '/login' });
-  };
-
   return (
-    <header className="h-14 bg-white flex items-center justify-between px-5 shadow-xs">
-      <div className="flex items-center gap-2 flex-1 max-w-sm">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg flex-1">
-          <Search className="w-4 h-4 text-slate-400" strokeWidth={1.75} />
-          <input
-            type="text"
-            placeholder="搜索内容、草稿..."
-            className="flex-1 bg-transparent border-none outline-none text-slate-700 placeholder:text-slate-400"
-          />
-          <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded bg-slate-100 px-1.5 font-mono text-[10px] text-slate-400">
-            ⌘K
-          </kbd>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        {/* 字体大小切换 */}
-        <div className="flex items-center gap-1 px-1 py-1 bg-slate-100 rounded-lg">
-          <Type className="w-3.5 h-3.5 text-slate-400 ml-1" strokeWidth={1.75} />
-          {fontSizeOptions.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setFontSize(opt.value)}
-              className={cn(
-                'px-2 py-1 rounded-md text-xs font-medium transition-all duration-150',
-                fontSize === opt.value
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        <div className="w-px h-5 bg-slate-200 mx-1" />
-        <button className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-colors duration-150">
-          <Bell className="w-[18px] h-[18px]" strokeWidth={1.75} />
-        </button>
+    <header className="h-14 flex items-center justify-between px-6 glass-card rounded-none border-t-0 border-r-0 border-l-0 relative z-[200]">
+      {/* 页面标题 */}
+      <h1 className="text-lg font-heading font-semibold">{title}</h1>
 
-        {/* 用户菜单 */}
+      {/* 操作区 */}
+      <div className="flex items-center gap-3">
+        <ProjectSelector />
+
+        <div className="divider-vertical h-5" />
+
+        {/* 字体大小 */}
         <div className="relative" ref={menuRef}>
           <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="flex items-center gap-2 p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-colors duration-150"
+            onClick={() => setShowFontMenu(!showFontMenu)}
+            className="btn-icon"
+            title="调整字体大小"
           >
-            {user?.avatar ? (
-              <img src={user.avatar} alt="" className="w-7 h-7 rounded-full" />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center">
-                <User className="w-4 h-4 text-blue-600" strokeWidth={1.75} />
-              </div>
-            )}
+            <Type className="w-5 h-5" />
           </button>
-
-          {showMenu && (
-            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-100 py-1 z-50">
-              <div className="px-4 py-2 border-b border-slate-100">
-                <p className="text-sm font-medium text-slate-800 truncate">
-                  {user?.nickname || user?.username || '用户'}
-                </p>
-                <p className="text-xs text-slate-400 truncate">{user?.phone || user?.email}</p>
-              </div>
-              <button
-                onClick={() => { setShowMenu(false); navigate({ to: '/settings' }); }}
-                className="w-full px-4 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
-              >
-                <Settings className="w-4 h-4" />
-                设置
-              </button>
-              <button
-                onClick={handleLogout}
-                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-              >
-                <LogOut className="w-4 h-4" />
-                退出登录
-              </button>
+          {showFontMenu && (
+            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 py-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 min-w-[100px] z-[100]">
+              {FONT_SIZES.map((size) => (
+                <button
+                  key={size.value}
+                  onClick={() => { setFontSize(size.value); setShowFontMenu(false); }}
+                  className={`w-full px-4 py-2 text-center text-sm hover:bg-slate-100 dark:hover:bg-slate-700 ${fontSize === size.value ? 'text-primary-600 font-medium' : ''}`}
+                >
+                  {size.label}
+                </button>
+              ))}
             </div>
           )}
         </div>
+
+        {/* 主题切换 */}
+        <button
+          onClick={toggleTheme}
+          className="btn-icon"
+          title="切换主题"
+        >
+          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
+
+        {/* 通知 */}
+        <button className="btn-icon relative">
+          <Bell className="w-5 h-5" />
+          <span className="absolute top-1 right-1 w-2 h-2 bg-cta rounded-full" />
+        </button>
       </div>
     </header>
   );

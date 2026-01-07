@@ -1,7 +1,7 @@
 # AI Creator - AI 上下文文档
 
 > **模型**: Claude Opus 4.5 (claude-opus-4-5-20251101)
-> **生成时间**: 2025-12-28 21:06:15
+> **生成时间**: 2026-01-06
 > **作者**: @Ysf
 
 ---
@@ -17,15 +17,15 @@
 ### 技术架构
 
 采用 **Monorepo + Git Submodule** 混合架构：
-- **Monorepo 管理**: 核心共享包 (agent-core)、桌面端 (Tauri)、Sidecar (Python)
-- **Git Submodule**: 独立服务 (云端后端/前端、移动端、LLM网关、舆情分析)
+- **Monorepo 管理**: 核心共享包 (agent-core)、桌面端 (Tauri)、Sidecar (Python)、移动端 (uni-app)
+- **Git Submodule**: 独立服务 (云端后端/前端、LLM网关、舆情分析)
 
 ### 核心技术栈
 
 | 层级 | 技术选型 | 说明 |
 |------|---------|------|
 | **桌面端** | Tauri 2.0 + React + Rust | 原生性能，内嵌 Python Sidecar |
-| **移动端** | uni-app x (UTS) | 一套代码发布 iOS/Android/小程序 |
+| **移动端** | uni-app (TypeScript) + unibest | 一套代码发布 iOS/Android/小程序 |
 | **云端后端** | FastAPI + SQLAlchemy + Celery | fastapi_best_architecture 框架 |
 | **云端前端** | Vue 3 + Vben Admin | 企业级管理后台 |
 | **Agent 核心** | LangGraph + Claude API | 端云统一的 Agent Runtime |
@@ -74,8 +74,15 @@ ai-creator/                              # Monorepo 根目录
 │   │       ├── executor.py              # LocalExecutor
 │   │       ├── tools/                   # 本地工具实现
 │   │       ├── services/                # 本地服务
-│   │       ├── browser/                 # 浏览器管理
+│   │       ├── browser/                 # browser-use AI 浏览器
 │   │       └── scheduler/               # 定时任务
+│   │
+│   ├── mobile-app/                      # uni-app: 移动端应用 (基于 unibest)
+│   │   ├── src/                         # 源码目录
+│   │   │   ├── pages/                   # 页面
+│   │   │   ├── components/              # 组件
+│   │   │   └── stores/                  # 状态管理
+│   │   └── package.json                 # 依赖配置
 │   │
 │   └── landing/                         # 静态: 落地页
 │
@@ -93,10 +100,6 @@ ai-creator/                              # Monorepo 根目录
 │   ├── cloud-frontend/                  # Vue: 云端管理后台
 │   │   ├── apps/web-antd/               # Ant Design 版本
 │   │   └── packages/                    # 共享包
-│   │
-│   ├── mobile-app/                      # UniApp: 移动端应用
-│   │   ├── pages/                       # 页面
-│   │   └── uni_modules/                 # 插件
 │   │
 │   └── new-api/                         # Go: LLM API 网关
 │       ├── web/                         # 管理界面
@@ -213,7 +216,7 @@ agent-core (无外部依赖)
 **核心功能**:
 - JSON-RPC 服务 (与 Tauri 通信)
 - LocalExecutor (本地 Graph 执行)
-- 本地浏览器自动化 (Playwright)
+- browser-use AI 浏览器操作 (无需选择器/流程脚本)
 - 本地凭证加密存储
 - 定时任务调度 (APScheduler)
 
@@ -281,14 +284,15 @@ agent-core (无外部依赖)
 
 ---
 
-### 6. Mobile App (services/mobile-app/)
+### 6. Mobile App (apps/mobile-app/)
 
-**定位**: uni-app x 移动端应用
+**定位**: uni-app 移动端应用 (基于 unibest)
 
 **技术栈**:
-- 框架: uni-app x (UTS)
+- 框架: uni-app + unibest
 - 语言: Vue 3 + TypeScript
 - 发布: iOS / Android / 微信小程序
+- 管理: Monorepo (pnpm workspace)
 
 **核心功能**:
 - 快速记录 (灵感捕捉)
@@ -296,7 +300,7 @@ agent-core (无外部依赖)
 - 数据概览 (运营数据)
 - 纯云端模式 (无本地 Agent)
 
-**导航**: [详细文档](./services/mobile-app/CLAUDE.md)
+**导航**: [详细文档](./apps/mobile-app/CLAUDE.md)
 
 ---
 
@@ -521,8 +525,8 @@ uv run uvicorn backend.app.main:app --reload
 cd apps/desktop
 pnpm run tauri:dev
 
-# 开发移动端
-cd services/mobile-app
+# 开发移动端 (基于 unibest)
+cd apps/mobile-app
 pnpm run dev:mp-weixin
 ```
 
@@ -564,6 +568,7 @@ pnpm run dev:mp-weixin
 所有开发过程记录在 `.specstory/history/docs/session.md`
 
 **最近更新**:
+- 2026-01-06 - 架构更新：browser-use AI 浏览器、移动端迁移至 Monorepo
 - 2025-12-28 18:00:00 - Agent Runtime 后续工作完成
 - 2025-12-28 15:37:33 - Agent Runtime 开发实现
 - 2025-12-28 - LLM统一接口设计与文档更新
@@ -589,9 +594,9 @@ pnpm run dev:mp-weixin
 | agent-core | ✅ 100% | 核心共享包 |
 | apps/desktop | ✅ 100% | 桌面端应用 |
 | apps/sidecar | ✅ 100% | Sidecar 服务 |
+| apps/mobile-app | ✅ 80% | 移动端应用 (基于 unibest) |
 | services/cloud-backend | ✅ 90% | 云端后端 (部分插件未扫描) |
 | services/cloud-frontend | ✅ 80% | 云端前端 (部分包未扫描) |
-| services/mobile-app | ⚠️ 60% | 移动端 (uni_modules 未扫描) |
 | services/new-api | ⚠️ 50% | LLM 网关 (Go 代码未扫描) |
 | external/BettaFish | ⚠️ 40% | 舆情分析 (部分模块未扫描) |
 | external/MiroFish | ⚠️ 40% | 数据采集 (部分模块未扫描) |
@@ -616,4 +621,4 @@ pnpm run dev:mp-weixin
 ---
 
 **维护者**: @Ysf
-**最后更新**: 2025-12-28 21:06:15
+**最后更新**: 2026-01-06

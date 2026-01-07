@@ -10,7 +10,12 @@ import { routeTree } from './routeTree.gen';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { ToastProvider } from './components/common/Toast';
 import { SidecarInitializer } from './components/common/SidecarInitializer';
+import { useAppStore } from './stores/useAppStore';
 import './index.css';
+
+// 初始化字体大小
+const fontSize = useAppStore.getState().fontSize;
+document.body.style.zoom = String(fontSize / 16);
 
 const queryClient = new QueryClient({
   defaultOptions: {

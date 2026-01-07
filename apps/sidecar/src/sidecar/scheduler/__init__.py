@@ -6,5 +6,6 @@
 """
 
 from .publish_scheduler import PublishScheduler, ScheduledTask, get_scheduler
+from .account_sync_scheduler import AccountSyncScheduler, get_sync_scheduler
 
-__all__ = ["PublishScheduler", "ScheduledTask", "get_scheduler"]
+__all__ = ["PublishScheduler", "ScheduledTask", "get_scheduler", "AccountSyncScheduler", "get_sync_scheduler"]

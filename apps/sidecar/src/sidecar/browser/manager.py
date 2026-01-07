@@ -140,7 +140,7 @@ class BrowserSessionManager:
         account_id: str,
     ) -> bool:
         """
-        保存会话凭证
+        保存会话凭证 - 同时保存 cookies 和 localStorage
 
         Args:
             platform: 平台名称
@@ -156,8 +156,15 @@ class BrowserSessionManager:
             return False
 
         try:
-            # 保存 storage state (包含 cookies 和 localStorage)
+            # 保存 storage state (包含 cookies)
             storage_state = await session.context.storage_state()
+
+            # 获取 localStorage
+            local_storage_str = await session.page.evaluate("() => JSON.stringify(localStorage)")
+            local_storage_data = json.loads(local_storage_str) if local_storage_str != '{}' else {}
+
+            # 合并到 storage_state
+            storage_state['localStorage'] = local_storage_data
 
             cred_dir = self._credentials_dir / platform
             cred_dir.mkdir(parents=True, exist_ok=True)
@@ -210,7 +217,7 @@ class BrowserSessionManager:
         platform: str,
         account_id: str,
     ) -> Optional[Dict[str, Any]]:
-        """加载存储状态"""
+        """加载存储状态（不包含 localStorage，需要单独注入）"""
         cred_path = self._credentials_dir / platform / f"{account_id}_state.json"
 
         if not cred_path.exists():
@@ -218,9 +225,35 @@ class BrowserSessionManager:
 
         try:
             with open(cred_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                # 移除 localStorage，因为 Playwright 不支持直接加载
+                # localStorage 需要在页面加载后通过 JS 注入
+                self._pending_local_storage = data.pop('localStorage', None)
+                return data
         except Exception:
             return None
+
+    async def inject_local_storage(self, page, platform: str, account_id: str):
+        """注入 localStorage 到页面"""
+        cred_path = self._credentials_dir / platform / f"{account_id}_state.json"
+
+        if not cred_path.exists():
+            return
+
+        try:
+            with open(cred_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                local_storage = data.get('localStorage', {})
+
+            if local_storage:
+                # 注入 localStorage
+                await page.evaluate(f"""(data) => {{
+                    for (const [key, value] of Object.entries(data)) {{
+                        localStorage.setItem(key, value);
+                    }}
+                }}""", local_storage)
+        except Exception:
+            pass
 
     async def _inject_stealth_scripts(self, context):
         """注入反检测脚本"""

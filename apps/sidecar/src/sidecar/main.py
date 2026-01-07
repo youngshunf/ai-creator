@@ -9,6 +9,7 @@ Sidecar 主入口 - JSON-RPC 服务
 
 import asyncio
 import json
+import logging
 import sys
 from typing import Any, Dict, Optional
 from dataclasses import dataclass, asdict
@@ -17,6 +18,8 @@ from agent_core.runtime.interfaces import ExecutionRequest
 from agent_core.llm import LLMConfigManager, CloudLLMClient
 
 from .executor import LocalExecutor
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -66,7 +69,20 @@ class SidecarServer:
             "login": self._handle_login,
             "logout": self._handle_logout,
             "get_models": self._handle_get_models,
+            "sync_auth_tokens": self._handle_sync_auth_tokens,
             "shutdown": self._handle_shutdown,
+            # 平台相关
+            "get_platforms": self._handle_get_platforms,
+            "adapt_content": self._handle_adapt_content,
+            # 账号管理
+            "start_platform_login": self._handle_start_platform_login,
+            "check_login_status": self._handle_check_login_status,
+            "close_login_browser": self._handle_close_login_browser,
+            # 发布管理
+            "publish_content": self._handle_publish_content,
+            # 账号同步
+            "sync_account": self._handle_sync_account,
+            "sync_all_accounts": self._handle_sync_all_accounts,
         }
 
     async def start(self):
@@ -203,6 +219,7 @@ class SidecarServer:
             session_id=params.get("session_id"),
             timeout=params.get("timeout", 300),
             trace_id=params.get("trace_id"),
+            extra={"access_token": params.get("access_token")},  # Pass access_token in extra
         )
 
         try:
@@ -320,6 +337,49 @@ class SidecarServer:
 
         return {"status": "ok"}
 
+    async def _handle_sync_auth_tokens(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        同步前端登录的 Token 到本地配置
+        
+        前端通过 Axios 登录后，调用此方法将 Token 保存到本地，
+        供 Sidecar 的 LLM 客户端使用。
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        api_token = params.get("api_token", "")
+        access_token = params.get("access_token", "")
+        access_token_expire_time = params.get("access_token_expire_time", "")
+        refresh_token = params.get("refresh_token", "")
+        refresh_token_expire_time = params.get("refresh_token_expire_time", "")
+        environment = params.get("environment", "production")
+
+        if not access_token:
+            raise ValueError("access_token is required")
+
+        logger.info(f"Syncing auth tokens (api_token={bool(api_token)}, access_token={bool(access_token)}, env={environment})")
+
+        # 保存 Token 到本地配置文件
+        config_manager = LLMConfigManager()
+        config_manager.save_token(
+            api_token,
+            environment,
+            access_token,
+            access_token_expire_time,
+            refresh_token,
+            refresh_token_expire_time,
+        )
+
+        # 重新初始化 LLM 客户端 (使用新的 Token)
+        llm_config = config_manager.load(environment)
+        if self.llm_client:
+            await self.llm_client.close()
+        self.llm_client = CloudLLMClient(llm_config)
+        
+        logger.info("Auth tokens synced successfully, LLM client reinitialized")
+
+        return {"status": "ok"}
+
     async def _handle_get_models(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """获取可用模型列表"""
         if not self.llm_client:
@@ -351,6 +411,348 @@ class SidecarServer:
             await self.llm_client.close()
 
         return {"status": "ok"}
+
+    # ==================== 平台相关方法 ====================
+
+    async def _handle_get_platforms(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """获取支持的平台列表"""
+        from .platforms import PLATFORM_ADAPTERS, get_adapter
+
+        platforms = []
+        for name in PLATFORM_ADAPTERS:
+            adapter = get_adapter(name)
+            platforms.append({
+                "name": adapter.platform_name,
+                "display_name": adapter.platform_display_name,
+                "login_url": adapter.login_url,
+                "spec": {
+                    "title_max_length": adapter.spec.title_max_length,
+                    "content_max_length": adapter.spec.content_max_length,
+                    "image_max_count": adapter.spec.image_max_count,
+                    "video_max_count": adapter.spec.video_max_count,
+                    "supported_formats": adapter.spec.supported_formats,
+                },
+            })
+        return {"platforms": platforms}
+
+    async def _handle_adapt_content(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """适配内容到指定平台"""
+        from .platforms import get_adapter
+
+        platform = params.get("platform", "")
+        title = params.get("title", "")
+        content = params.get("content", "")
+        images = params.get("images", [])
+        hashtags = params.get("hashtags", [])
+
+        adapter = get_adapter(platform)
+        adapted = adapter.adapt_content(title, content, images=images, hashtags=hashtags)
+
+        return {
+            "title": adapted.title,
+            "content": adapted.content,
+            "images": adapted.images,
+            "hashtags": adapted.hashtags,
+            "warnings": adapted.warnings,
+        }
+
+    # ==================== 账号管理方法 ====================
+
+    async def _handle_start_platform_login(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """启动平台扫码登录 - 打开全新浏览器让用户登录"""
+        from .platforms import get_adapter
+        from .browser.manager import BrowserSessionManager
+
+        platform = params.get("platform", "")
+        # 使用临时 session_id 跟踪登录过程（不是最终的 account_id）
+        session_id = f"login-{platform}-{int(asyncio.get_event_loop().time() * 1000)}"
+
+        logger.info(f"[LOGIN] 启动登录: platform={platform}, session_id={session_id}")
+
+        adapter = get_adapter(platform)
+
+        # 每次添加新账号都创建新的浏览器管理器，确保是全新的浏览器
+        if not hasattr(self, '_login_browser_manager'):
+            self._login_browser_manager = {}
+
+        # 创建全新的浏览器会话管理器（非无头模式）
+        browser_manager = BrowserSessionManager(headless=False)
+        self._login_browser_manager[session_id] = browser_manager
+
+        try:
+            # 获取全新的浏览器会话，不加载任何已保存的凭证
+            logger.info(f"[LOGIN] 创建全新浏览器会话...")
+            session = await browser_manager.get_session(
+                platform=platform,
+                account_id=session_id,
+                load_credentials=False,  # 关键：不加载任何已保存的凭证
+            )
+
+            # 导航到登录页面
+            logger.info(f"[LOGIN] 导航到登录页面: {adapter.login_url}")
+            await session.page.goto(adapter.login_url, wait_until="domcontentloaded")
+
+            logger.info(f"[LOGIN] 浏览器已打开, session_id={session_id}")
+
+            return {
+                "status": "browser_opened",
+                "platform": platform,
+                "account_id": session_id,  # 返回临时 session_id，用于后续轮询
+                "login_url": adapter.login_url,
+                "message": f"浏览器已打开，请在浏览器中完成 {adapter.platform_display_name} 登录",
+            }
+
+        except Exception as e:
+            logger.error(f"[LOGIN] 启动浏览器失败: {e}")
+            return {
+                "status": "error",
+                "platform": platform,
+                "error": str(e),
+                "message": f"启动浏览器失败: {e}",
+            }
+
+    async def _handle_check_login_status(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """检查平台登录状态并保存凭证"""
+        from .platforms import get_adapter
+
+        platform = params.get("platform", "")
+        session_id = params.get("account_id", "")
+
+        logger.info(f"[LOGIN] 检查登录状态: platform={platform}, session_id={session_id}")
+
+        if not hasattr(self, '_login_browser_manager') or session_id not in self._login_browser_manager:
+            return {"status": "error", "logged_in": False, "message": "登录会话不存在"}
+
+        browser_manager = self._login_browser_manager[session_id]
+        session_key = f"{platform}:{session_id}"
+
+        if session_key not in browser_manager._sessions:
+            return {"status": "error", "logged_in": False, "message": "浏览器会话不存在"}
+
+        session = browser_manager._sessions[session_key]
+
+        try:
+            page = session.page
+            current_url = page.url
+
+            # 获取 cookies 和 localStorage
+            cookies = await page.context.cookies()
+            local_storage_str = await page.evaluate("() => JSON.stringify(localStorage)")
+            storage_data = json.loads(local_storage_str) if local_storage_str != '{}' else {}
+
+            # 使用适配器检查登录状态
+            adapter = get_adapter(platform)
+            login_result = await adapter.check_login_status(cookies, storage_data, current_url)
+
+            if login_result.is_logged_in:
+                platform_user_id = login_result.platform_user_id
+                if not platform_user_id:
+                    return {"status": "error", "logged_in": False, "message": "无法获取平台用户ID"}
+
+                logger.info(f"[LOGIN] 登录成功，平台用户ID: {platform_user_id}")
+
+                # 在登录成功时直接获取用户资料（避免单独同步时触发安全验证）
+                account_info = await self._get_account_info(page, platform)
+                logger.info(f"[LOGIN] 获取到用户资料: {account_info}")
+
+                # 更新 session 并保存凭证
+                session.account_id = platform_user_id
+                browser_manager._sessions[f"{platform}:{platform_user_id}"] = session
+                del browser_manager._sessions[session_key]
+                await browser_manager.save_session_credentials(platform, platform_user_id)
+
+                return {
+                    "status": "success",
+                    "logged_in": True,
+                    "platform": platform,
+                    "account_id": platform_user_id,
+                    "nickname": account_info.get("name", ""),
+                    "avatar": account_info.get("avatar", ""),
+                    "message": "登录成功，凭证已保存",
+                }
+            else:
+                return {"status": "pending", "logged_in": False, "message": "等待用户完成登录..."}
+
+        except Exception as e:
+            logger.error(f"[LOGIN] 检查登录状态失败: {e}", exc_info=True)
+            return {"status": "error", "logged_in": False, "error": str(e), "message": f"检查登录状态失败: {e}"}
+
+    async def _handle_close_login_browser(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """关闭登录浏览器"""
+        session_id = params.get("account_id", "")
+
+        if hasattr(self, '_login_browser_manager') and session_id in self._login_browser_manager:
+            browser_manager = self._login_browser_manager[session_id]
+            await browser_manager.close()
+            del self._login_browser_manager[session_id]
+
+        return {"status": "closed", "message": "浏览器已关闭"}
+
+    async def _check_platform_logged_in(self, page, platform: str) -> bool:
+        """检查平台是否已登录 - 同时检测 cookie 和 localStorage"""
+        try:
+            # 获取 cookies
+            cookies = await page.context.cookies()
+            cookie_names = [c['name'] for c in cookies]
+
+            # 获取 localStorage
+            local_storage_str = await page.evaluate("() => JSON.stringify(localStorage)")
+            storage_data = json.loads(local_storage_str) if local_storage_str != '{}' else {}
+            logger.info(f"[LOGIN] cookies: {cookie_names[:10]}...")
+            logger.info(f"[LOGIN] localStorage keys: {list(storage_data.keys())}")
+
+            if platform == "xiaohongshu":
+                # 小红书：必须离开登录页面且有用户信息
+                current_url = page.url
+                is_on_login_page = '/login' in current_url
+                has_user_info = 'USER_INFO' in storage_data or 'USER_INFO_FOR_BIZ' in storage_data
+                logged_in = not is_on_login_page and has_user_info
+                logger.info(f"[LOGIN] 小红书登录检测: is_on_login_page={is_on_login_page}, has_user_info={has_user_info}")
+                return logged_in
+            elif platform == "douyin":
+                login_cookies = ['sessionid', 'passport_csrf_token']
+                return any(c in cookie_names for c in login_cookies)
+            elif platform == "wechat":
+                login_cookies = ['slave_sid', 'slave_user']
+                return any(c in cookie_names for c in login_cookies)
+            return False
+        except Exception as e:
+            logger.error(f"[LOGIN] 检测登录状态异常: {e}")
+            return False
+
+    async def _get_account_info(self, page, platform: str) -> Dict[str, str]:
+        """获取账号信息 - 从 localStorage 或页面元素获取"""
+        try:
+            if platform == "xiaohongshu":
+                # 优先从 localStorage 获取用户信息
+                user_info_str = await page.evaluate("() => localStorage.getItem('USER_INFO_FOR_BIZ')")
+                logger.info(f"[LOGIN] USER_INFO_FOR_BIZ 原始值: {user_info_str}")
+                if user_info_str:
+                    user_info = json.loads(user_info_str)
+                    logger.info(f"[LOGIN] 解析后用户信息: {user_info}")
+                    return {
+                        "name": user_info.get("userName", ""),
+                        "avatar": user_info.get("userAvatar", ""),
+                        "user_id": user_info.get("userId", ""),
+                    }
+                # 备用：尝试 USER_INFO
+                user_info_str = await page.evaluate("() => localStorage.getItem('USER_INFO')")
+                logger.info(f"[LOGIN] USER_INFO 原始值: {user_info_str}")
+                if user_info_str:
+                    user_info = json.loads(user_info_str)
+                    user_data = user_info.get("user", {}).get("value", {})
+                    return {
+                        "name": user_data.get("userId", ""),
+                        "avatar": "",
+                        "user_id": user_data.get("userId", ""),
+                    }
+                # 备用：从搜索历史键中提取用户ID
+                local_storage_str = await page.evaluate("() => JSON.stringify(localStorage)")
+                storage_data = json.loads(local_storage_str) if local_storage_str != '{}' else {}
+                for key in storage_data.keys():
+                    if key.startswith('xhs-pc-search-history-'):
+                        user_id = key.replace('xhs-pc-search-history-', '')
+                        logger.info(f"[LOGIN] 从搜索历史键提取用户ID: {user_id}")
+                        return {
+                            "name": f"小红书用户",
+                            "avatar": "",
+                            "user_id": user_id,
+                        }
+            elif platform == "douyin":
+                name = await page.locator('[class*="user-name"], [class*="nickname"]').first.text_content() or ""
+                avatar = await page.locator('[class*="avatar"] img').first.get_attribute("src") or ""
+                return {"name": name.strip(), "avatar": avatar}
+            elif platform == "wechat":
+                name = await page.locator('[class*="weui-desktop-account__nickname"]').first.text_content() or ""
+                avatar = await page.locator('[class*="weui-desktop-account__avatar"] img').first.get_attribute("src") or ""
+                return {"name": name.strip(), "avatar": avatar}
+        except Exception as e:
+            logger.error(f"[LOGIN] 获取账号信息失败: {e}")
+        return {"name": "", "avatar": ""}
+
+    # ==================== 发布管理方法 ====================
+
+    async def _handle_publish_content(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """发布内容到平台"""
+        from .platforms import get_adapter
+        from .tools.browser_use_publish import BrowserUsePublisher
+
+        platform = params.get("platform", "")
+        title = params.get("title", "")
+        content = params.get("content", "")
+        images = params.get("images", [])
+        hashtags = params.get("hashtags", [])
+        account_id = params.get("account_id", "")
+
+        adapter = get_adapter(platform)
+
+        # 适配内容
+        adapted = adapter.adapt_content(title, content, images=images, hashtags=hashtags)
+
+        # 验证内容
+        valid, errors = adapter.validate_content(adapted)
+        if not valid:
+            return {
+                "success": False,
+                "error": f"内容验证失败: {', '.join(errors)}",
+            }
+
+        # 使用 browser-use AI 发布
+        publisher = BrowserUsePublisher()
+        result = await publisher.publish(
+            platform=platform,
+            account_id=account_id,
+            title=adapted.title,
+            content=adapted.content,
+            images=adapted.images,
+            hashtags=adapted.hashtags,
+        )
+
+        return {
+            "success": result.success,
+            "post_url": result.post_url,
+            "error": result.error,
+        }
+
+    # ==================== 账号同步方法 ====================
+
+    async def _handle_sync_account(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """同步单个账号的用户资料"""
+        from .scheduler import get_sync_scheduler
+
+        platform = params.get("platform", "")
+        account_id = params.get("account_id", "")
+
+        if not platform or not account_id:
+            return {"success": False, "error": "缺少 platform 或 account_id"}
+
+        scheduler = get_sync_scheduler()
+        result = await scheduler.sync_account(platform, account_id)
+
+        return {
+            "success": result.success,
+            "platform": result.platform,
+            "account_id": result.account_id,
+            "profile": result.profile,
+            "error": result.error,
+        }
+
+    async def _handle_sync_all_accounts(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """同步所有账号"""
+        from .scheduler import get_sync_scheduler
+
+        scheduler = get_sync_scheduler()
+        results = await scheduler.sync_all()
+
+        return {
+            "success": True,
+            "total": len(results),
+            "succeeded": sum(1 for r in results if r.success),
+            "results": [
+                {"platform": r.platform, "account_id": r.account_id, "success": r.success, "error": r.error}
+                for r in results
+            ],
+        }
 
 
 def main():

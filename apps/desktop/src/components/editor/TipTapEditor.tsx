@@ -158,12 +158,13 @@ export function TipTapEditor({
       >
         <EditorContent
           editor={editor}
-          className="prose prose-sm sm:prose lg:prose-lg max-w-none p-4 min-h-[300px] focus:outline-none"
+          className="prose max-w-none min-h-[300px] px-4 py-4 [&_.ProseMirror]:outline-none [&_.ProseMirror:focus]:outline-none"
+          style={{ fontSize: 'var(--editor-font-size, 16px)' }}
         />
       </div>
 
       {showCharacterCount && (
-        <div className="flex items-center justify-between px-4 py-2 text-xs text-muted-foreground border-t">
+        <div className="flex items-center justify-between px-4 py-2 text-xs text-slate-500 bg-slate-50 dark:bg-slate-900/50">
           <span>
             {characterCount} / {maxLength} 字符
           </span>
