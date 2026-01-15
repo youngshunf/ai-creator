@@ -10,10 +10,12 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
+    "gen:api": "openapi-ts",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
+    "@hey-api/client-axios": "^0.9.1",
     "@hookform/resolvers": "^3.9.1",
     "@tanstack/react-query": "^5.62.8",
     "@tanstack/react-router": "^1.93.0",
@@ -44,6 +46,7 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@hey-api/openapi-ts": "^0.90.3",
     "@tanstack/router-devtools": "^1.93.0",
     "@tanstack/router-plugin": "^1.93.0",
     "@tauri-apps/cli": "^2.1.0",

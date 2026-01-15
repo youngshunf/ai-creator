@@ -566,8 +566,10 @@ class SidecarServer:
                     "logged_in": True,
                     "platform": platform,
                     "account_id": platform_user_id,
-                    "nickname": account_info.get("name", ""),
-                    "avatar": account_info.get("avatar", ""),
+                    # 前端期望的字段名: account_name, avatar_url
+                    "account_name": account_info.get("name", ""),
+                    "avatar_url": account_info.get("avatar", ""),
+                    "followers_count": account_info.get("followers_count", 0),
                     "message": "登录成功，凭证已保存",
                 }
             else:
