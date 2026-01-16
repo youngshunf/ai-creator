@@ -18,6 +18,11 @@ from agent_core.runtime.interfaces import ExecutionRequest
 from agent_core.llm import LLMConfigManager, CloudLLMClient
 
 from .executor import LocalExecutor
+from .browser.manager import BrowserSessionManager
+from .publish_executor import PublishExecutor
+from .services.credential_sync import CredentialSyncClient
+from .services.profile_sync import ProfileSyncClient
+from .scheduler import get_sync_scheduler
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +62,14 @@ class SidecarServer:
         self.config = config
         self.executor: Optional[LocalExecutor] = None
         self.llm_client: Optional[CloudLLMClient] = None
+        
+        # 浏览器与发布服务
+        self.browser_manager = BrowserSessionManager(headless=True)
+        self.publish_executor = PublishExecutor(self.browser_manager)
+        
+        # 凭证同步服务
+        self.credential_client: Optional[CredentialSyncClient] = None
+        
         self._running = False
 
         # 方法映射
@@ -83,6 +96,11 @@ class SidecarServer:
             # 账号同步
             "sync_account": self._handle_sync_account,
             "sync_all_accounts": self._handle_sync_all_accounts,
+            # 凭证同步
+            "init_credential_sync": self._handle_init_credential_sync,
+            "sync_credential": self._handle_sync_credential,
+            "sync_all_credentials": self._handle_sync_all_credentials,
+            "pull_credential": self._handle_pull_credential,
         }
 
     async def start(self):
@@ -461,6 +479,9 @@ class SidecarServer:
     async def _handle_start_platform_login(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """启动平台扫码登录 - 打开全新浏览器让用户登录"""
         from .platforms import get_adapter
+        # BrowserSessionManager 已在 init 中导入，但这里可能需要局部导入或使用 self.browser_manager
+        # 注意：这里我们是创建一个*新的*非无头浏览器用于登录，而不是使用 self.browser_manager (它是 headless 的)
+        # 所以我们需要 BrowserSessionManager 类
         from .browser.manager import BrowserSessionManager
 
         platform = params.get("platform", "")
@@ -576,6 +597,17 @@ class SidecarServer:
                 return {"status": "pending", "logged_in": False, "message": "等待用户完成登录..."}
 
         except Exception as e:
+            error_msg = str(e)
+            # 处理页面导航导致的上下文丢失错误 (通常发生在重定向或页面刷新时)
+            if "Execution context was destroyed" in error_msg or "Target closed" in error_msg:
+                # 这是一个预期的竞态条件，不应视为错误，而是让前端继续轮询
+                logger.warning(f"[LOGIN] 页面正在导航或刷新，上下文暂时不可用: {error_msg}")
+                return {
+                    "status": "pending", 
+                    "logged_in": False, 
+                    "message": "页面跳转中..."
+                }
+
             logger.error(f"[LOGIN] 检查登录状态失败: {e}", exc_info=True)
             return {"status": "error", "logged_in": False, "error": str(e), "message": f"检查登录状态失败: {e}"}
 
@@ -676,45 +708,50 @@ class SidecarServer:
 
     async def _handle_publish_content(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """发布内容到平台"""
-        from .platforms import get_adapter
-        from .tools.browser_use_publish import BrowserUsePublisher
-
+        
         platform = params.get("platform", "")
         title = params.get("title", "")
         content = params.get("content", "")
         images = params.get("images", [])
+        videos = params.get("videos", [])
         hashtags = params.get("hashtags", [])
         account_id = params.get("account_id", "")
 
-        adapter = get_adapter(platform)
+        logger.info(f"[PUBLISH] 收到发布请求: platform={platform}, account={account_id}, title={title}")
 
-        # 适配内容
-        adapted = adapter.adapt_content(title, content, images=images, hashtags=hashtags)
+        if not platform or not account_id:
+            return {"success": False, "error": "缺少 platform 或 account_id"}
 
-        # 验证内容
-        valid, errors = adapter.validate_content(adapted)
-        if not valid:
+        # 构造发布内容字典
+        publish_content = {
+            "title": title,
+            "content": content,
+            "images": images,
+            "videos": videos,
+            "hashtags": hashtags,
+        }
+
+        # 执行发布
+        try:
+            result = await self.publish_executor.execute_publish(
+                platform=platform,
+                account_id=account_id,
+                content=publish_content
+            )
+
+            return {
+                "success": result.success,
+                "post_url": result.platform_post_url,
+                "post_id": result.platform_post_id,
+                "error": result.error_message,
+                "extra": result.extra,
+            }
+        except Exception as e:
+            logger.exception(f"[PUBLISH] 发布请求处理异常: {e}")
             return {
                 "success": False,
-                "error": f"内容验证失败: {', '.join(errors)}",
+                "error": f"发布异常: {str(e)}"
             }
-
-        # 使用 browser-use AI 发布
-        publisher = BrowserUsePublisher()
-        result = await publisher.publish(
-            platform=platform,
-            account_id=account_id,
-            title=adapted.title,
-            content=adapted.content,
-            images=adapted.images,
-            hashtags=adapted.hashtags,
-        )
-
-        return {
-            "success": result.success,
-            "post_url": result.post_url,
-            "error": result.error,
-        }
 
     # ==================== 账号同步方法 ====================
 
@@ -755,6 +792,104 @@ class SidecarServer:
                 for r in results
             ],
         }
+
+
+    # ==================== 凭证同步方法 ====================
+
+    async def _handle_init_credential_sync(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """初始化凭证同步客户端"""
+        api_base_url = params.get("api_base_url", "")
+        auth_token = params.get("auth_token", "")
+        master_key = params.get("master_key", "")
+        
+        if not api_base_url or not auth_token or not master_key:
+            return {"success": False, "error": "Missing required parameters: api_base_url, auth_token, master_key"}
+            
+        try:
+            self.credential_client = CredentialSyncClient(
+                api_base_url=api_base_url,
+                auth_token=auth_token,
+                master_key=master_key
+            )
+            
+            # 同时初始化资料同步客户端并设置给调度器
+            profile_client = ProfileSyncClient(
+                api_base_url=api_base_url,
+                auth_token=auth_token
+            )
+            scheduler = get_sync_scheduler()
+            scheduler.set_sync_client(profile_client)
+            
+            return {"success": True, "message": "Credential & Profile sync client initialized"}
+        except Exception as e:
+            logger.exception(f"[SYNC] Init credential client failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def _handle_sync_credential(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """同步单个凭证"""
+        if not self.credential_client:
+            return {"success": False, "error": "Credential sync client not initialized"}
+            
+        platform = params.get("platform", "")
+        account_id = params.get("account_id", "")
+        
+        if not platform or not account_id:
+             return {"success": False, "error": "Missing platform or account_id"}
+             
+        try:
+            result = await self.credential_client.sync_credential(platform, account_id)
+            return {
+                "success": result.success,
+                "version": result.version,
+                "message": result.message
+            }
+        except Exception as e:
+            logger.exception(f"[SYNC] Sync credential failed: {e}")
+            return {"success": False, "error": str(e)}
+        
+    async def _handle_sync_all_credentials(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """同步所有凭证"""
+        if not self.credential_client:
+            return {"success": False, "error": "Credential sync client not initialized"}
+            
+        try:
+            results = await self.credential_client.sync_all()
+            return {
+                "success": True,
+                "results": [
+                    {
+                        "platform": r.platform,
+                        "account_id": r.account_id,
+                        "success": r.success,
+                        "message": r.message
+                    } for r in results
+                ]
+            }
+        except Exception as e:
+             logger.exception(f"[SYNC] Sync all credentials failed: {e}")
+             return {"success": False, "error": str(e)}
+
+    async def _handle_pull_credential(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """拉取凭证"""
+        if not self.credential_client:
+            return {"success": False, "error": "Credential sync client not initialized"}
+            
+        platform = params.get("platform", "")
+        account_id = params.get("account_id", "")
+        
+        if not platform or not account_id:
+             return {"success": False, "error": "Missing platform or account_id"}
+             
+        try:
+            result = await self.credential_client.pull_credential(platform, account_id)
+            return {
+                "success": result.success,
+                "version": result.version,
+                "message": result.message
+            }
+        except Exception as e:
+             logger.exception(f"[SYNC] Pull credential failed: {e}")
+             return {"success": False, "error": str(e)}
 
 
 def main():

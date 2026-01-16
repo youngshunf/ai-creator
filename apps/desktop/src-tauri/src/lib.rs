@@ -2,18 +2,36 @@
 //! @author Ysf
 
 use tauri::Manager;
-use std::sync::Mutex;
+// use std::sync::Mutex; // Remove this duplicate import or let rustc warn
 
 mod commands;
 mod config;
 mod db;
 mod sidecar;
+mod sync;
 
 use db::{DbState, init_db};
 use sidecar::SidecarManager;
+use sync::{SyncEngine, providers::{UserProvider, ProjectProvider, AccountProvider}};
+use std::sync::{Arc, Mutex};
 
 /// 全局 Sidecar 管理器状态
 pub struct SidecarState(pub Mutex<SidecarManager>);
+
+impl SidecarState {
+    pub fn lock(&self) -> std::sync::LockResult<std::sync::MutexGuard<'_, SidecarManager>> {
+        self.0.lock()
+    }
+}
+
+/// 全局同步引擎状态
+pub struct SyncState(pub Mutex<Option<Arc<SyncEngine>>>);
+
+impl SyncState {
+    pub fn lock(&self) -> std::sync::LockResult<std::sync::MutexGuard<'_, Option<Arc<SyncEngine>>>> {
+        self.0.lock()
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -21,6 +39,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .manage(SidecarState(Mutex::new(SidecarManager::new())))
         .manage(DbState::new())
+        .manage(SyncState(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::get_app_info,
@@ -67,14 +86,32 @@ pub fn run() {
             commands::sync_account,
             commands::sync_all_accounts,
             commands::db_update_account_profile,
+            // 同步服务命令
+            commands::start_sync,
+            commands::get_sync_status,
         ])
         .setup(|app| {
             // 初始化数据库
             match init_db(&app.handle()) {
                 Ok(repo) => {
+                    // 1. 初始化 DbState
                     let db_state = app.state::<DbState>();
-                    *db_state.0.lock().unwrap() = Some(repo);
+                    *db_state.lock().unwrap() = Some(repo.clone());
                     println!("[DB] Database initialized successfully");
+
+                    // 2. 初始化 SyncEngine
+                    // 这里我们创建一个 Arc<Repository> 用于共享
+                    let repo_arc = Arc::new(repo);
+                    let mut engine = SyncEngine::new(repo_arc);
+                    
+                    // 注册提供者 (顺序很重要：先同步用户，再同步依赖用户的实体)
+                    engine.register_provider(UserProvider);
+                    engine.register_provider(ProjectProvider);
+                    engine.register_provider(AccountProvider);
+                    
+                    let sync_state = app.state::<SyncState>();
+                    *sync_state.lock().unwrap() = Some(Arc::new(engine));
+                    println!("[Sync] SyncEngine initialized successfully");
                 }
                 Err(e) => {
                     eprintln!("[DB] Failed to initialize database: {}", e);

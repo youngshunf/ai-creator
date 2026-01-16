@@ -5,10 +5,15 @@
 -- 用户表（仅当前用户）
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
-    email TEXT NOT NULL,
+    uuid TEXT,
+    email TEXT,
+    phone TEXT,
     username TEXT,
     nickname TEXT,
-    avatar_url TEXT,
+    avatar TEXT,
+    status INTEGER DEFAULT 1,
+    is_superuser INTEGER DEFAULT 0,
+    is_staff INTEGER DEFAULT 0,
     subscription_tier TEXT NOT NULL DEFAULT 'free',
     settings TEXT,
     synced_at INTEGER,
@@ -175,6 +180,8 @@ CREATE TABLE IF NOT EXISTS sync_queue (
 CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_platform_accounts_user_id ON platform_accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_platform_accounts_project_id ON platform_accounts(project_id);
+-- 确保同一项目下的同一平台账号唯一
+CREATE UNIQUE INDEX IF NOT EXISTS idx_platform_accounts_unique ON platform_accounts(project_id, platform, account_id);
 CREATE INDEX IF NOT EXISTS idx_contents_user_id ON contents(user_id);
 CREATE INDEX IF NOT EXISTS idx_contents_project_id ON contents(project_id);
 CREATE INDEX IF NOT EXISTS idx_publications_user_id ON publications(user_id);

@@ -7,7 +7,7 @@ import json
 import re
 from typing import Any, Optional
 
-from .base import PlatformAdapter, ContentSpec, LoginResult, UserProfile
+from .base import PlatformAdapter, ContentSpec, LoginResult, UserProfile, AdaptedContent, PublishResult
 
 
 class XiaohongshuAdapter(PlatformAdapter):
@@ -221,3 +221,83 @@ class XiaohongshuAdapter(PlatformAdapter):
             )
         except Exception:
             return None
+
+    async def publish(self, page: Any, content: AdaptedContent) -> PublishResult:
+        """小红书发布实现"""
+        import logging
+        import time
+        logger = logging.getLogger(__name__)
+        
+        try:
+            # 1. 导航到发布页
+            logger.info("[XHS] 正在跳转发布页...")
+            await page.goto("https://creator.xiaohongshu.com/publish/publish?source=official", wait_until="networkidle")
+            await page.wait_for_timeout(3000)
+            
+            # 2. 上传图片/视频
+            if content.images:
+                logger.info(f"[XHS] 上传图片: {len(content.images)} 张")
+                # 查找上传输入框
+                file_input = await page.wait_for_selector("input[type='file']")
+                if file_input:
+                    # 注意：content.images 应该是本地文件路径
+                    await file_input.set_input_files(content.images)
+                    # 等待上传完成（根据图片大小可能需要较长时间）
+                    await page.wait_for_timeout(5000) 
+            
+            # 3. 填写标题
+            logger.info(f"[XHS] 填写标题: {content.title}")
+            # 小红书标题输入框 placeholder 通常包含"标题"
+            title_input = await page.wait_for_selector("input[placeholder*='标题']", timeout=5000)
+            if title_input:
+                await title_input.fill(content.title)
+            
+            # 4. 填写正文
+            logger.info("[XHS] 填写正文")
+            # 正文通常是 contenteditable div 或 textarea
+            content_input = await page.wait_for_selector(".ql-editor, textarea[placeholder*='正文']", timeout=5000)
+            if content_input:
+                # 处理 hashtags: 拼接到正文后面
+                final_content = content.content
+                if content.hashtags:
+                    tags_str = " " + " ".join([f"#{tag}" for tag in content.hashtags])
+                    final_content += tags_str
+                
+                await content_input.fill(final_content)
+                
+            # 5. 点击发布
+            logger.info("[XHS] 点击发布按钮")
+            submit_btn = await page.wait_for_selector("button.publish-btn, button:has-text('发布')", timeout=5000)
+            if submit_btn:
+                # 检查是否可点击
+                is_disabled = await submit_btn.is_disabled()
+                if not is_disabled:
+                    await submit_btn.click()
+                    
+                    # 6. 等待发布成功确认
+                    # 通常会有弹窗或跳转
+                    try:
+                        await page.wait_for_selector("text=发布成功", timeout=10000)
+                        logger.info("[XHS] 发布成功 detected")
+                        return PublishResult(success=True)
+                    except:
+                        # 也许跳转到了管理页
+                        if "manage" in page.url:
+                            return PublishResult(success=True)
+                        logger.warning("[XHS] 未检测到明确的发布成功信号，但已点击发布")
+                        return PublishResult(success=True, error_message="可能需人工确认")
+                else:
+                    return PublishResult(success=False, error_message="发布按钮不可点击，可能是内容校验未通过")
+            
+            return PublishResult(success=False, error_message="找不到发布按钮")
+            
+        except Exception as e:
+            logger.error(f"[XHS] 发布过程出错: {e}")
+            # 截图保存现场
+            try:
+                import os
+                os.makedirs("debug_screenshots", exist_ok=True)
+                await page.screenshot(path=f"debug_screenshots/xhs_publish_error_{int(time.time())}.png")
+            except:
+                pass
+            return PublishResult(success=False, error_message=str(e))

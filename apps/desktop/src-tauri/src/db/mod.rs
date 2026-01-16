@@ -18,6 +18,10 @@ impl DbState {
     pub fn new() -> Self {
         Self(Mutex::new(None))
     }
+
+    pub fn lock(&self) -> std::sync::LockResult<std::sync::MutexGuard<'_, Option<Repository>>> {
+        self.0.lock()
+    }
 }
 
 /// 获取数据库路径

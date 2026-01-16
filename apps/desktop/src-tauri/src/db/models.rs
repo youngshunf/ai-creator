@@ -36,10 +36,15 @@ impl ToString for SyncStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     pub id: String,
-    pub email: String,
+    pub uuid: Option<String>,
+    pub email: Option<String>,
+    pub phone: Option<String>,
     pub username: Option<String>,
     pub nickname: Option<String>,
-    pub avatar_url: Option<String>,
+    pub avatar: Option<String>,
+    pub status: i64,
+    pub is_superuser: bool,
+    pub is_staff: bool,
     pub subscription_tier: String,
     pub settings: Option<String>,
     pub synced_at: Option<i64>,
@@ -173,6 +178,23 @@ pub struct CreateProject {
     pub brand_keywords: Option<Vec<String>>,
     pub topics: Option<Vec<String>>,
     pub keywords: Option<Vec<String>>,
+}
+
+/// 更新项目请求
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateProject {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub industry: Option<String>,
+    pub sub_industries: Option<Vec<String>>,
+    pub brand_name: Option<String>,
+    pub brand_tone: Option<String>,
+    pub brand_keywords: Option<Vec<String>>,
+    pub topics: Option<Vec<String>>,
+    pub keywords: Option<Vec<String>>,
+    pub account_tags: Option<Vec<String>>,
+    pub preferred_platforms: Option<Vec<String>>,
+    pub content_style: Option<String>,
 }
 
 /// 创建内容请求

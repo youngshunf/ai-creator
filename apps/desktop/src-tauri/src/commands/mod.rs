@@ -2,8 +2,8 @@
 //! @author Ysf
 
 use serde::{Deserialize, Serialize};
-use tauri::State;
-use crate::SidecarState;
+use tauri::{State, AppHandle, Emitter};
+use crate::{SidecarState, SyncState};
 use crate::config::get_config;
 
 #[derive(Serialize, Deserialize)]
@@ -106,6 +106,7 @@ pub async fn phone_login(
     phone: String,
     code: String,
     state: State<'_, SidecarState>,
+    db_state: State<'_, DbState>,
 ) -> Result<LoginResponse, String> {
     let config = get_config();
     let client = reqwest::Client::new();
@@ -206,7 +207,7 @@ pub async fn phone_login(
 
     // 2. 调用 Sidecar 保存 LLM Token 和 Access Token
     {
-        let mut manager = state.0.lock().map_err(|e| e.to_string())?;
+        let mut manager = state.lock().map_err(|e| e.to_string())?;
         if manager.is_running() {
             let _ = manager.call(
                 "login",
@@ -219,6 +220,21 @@ pub async fn phone_login(
                     "environment": config.environment
                 }),
             );
+        }
+    }
+
+    // 3. 同步用户到本地数据库
+    {
+        if let Ok(guard) = db_state.lock() {
+            if let Some(repo) = guard.as_ref() {
+                let _ = repo.sync_user(
+                    &user.id.to_string(),
+                    user.email.as_deref(),
+                    Some(&user.username),
+                    Some(&user.nickname),
+                    user.avatar.as_deref()
+                );
+            }
         }
     }
 
@@ -236,6 +252,7 @@ pub async fn password_login(
     username: String,
     password: String,
     state: State<'_, SidecarState>,
+    db_state: State<'_, DbState>,
 ) -> Result<LoginResponse, String> {
     let config = get_config();
     let client = reqwest::Client::new();
@@ -345,7 +362,7 @@ pub async fn password_login(
 
     // 3. 调用 Sidecar 保存 LLM Token 和 Access Token
     {
-        let mut manager = state.0.lock().map_err(|e| e.to_string())?;
+        let mut manager = state.lock().map_err(|e| e.to_string())?;
         if manager.is_running() {
             let _ = manager.call(
                 "login",
@@ -358,6 +375,21 @@ pub async fn password_login(
                     "environment": config.environment
                 }),
             );
+        }
+    }
+
+    // 4. 同步用户到本地数据库
+    {
+        if let Ok(guard) = db_state.lock() {
+            if let Some(repo) = guard.as_ref() {
+                let _ = repo.sync_user(
+                    &user.id.to_string(),
+                    user.email.as_deref(),
+                    Some(&user.username),
+                    Some(&user.nickname),
+                    user.avatar.as_deref()
+                );
+            }
         }
     }
 
@@ -376,7 +408,7 @@ pub async fn logout(state: State<'_, SidecarState>) -> Result<String, String> {
 
     // 调用 Sidecar 清除 LLM Token
     {
-        let mut manager = state.0.lock().map_err(|e| e.to_string())?;
+        let mut manager = state.lock().map_err(|e| e.to_string())?;
         if manager.is_running() {
             let _ = manager.call(
                 "logout",
@@ -412,7 +444,7 @@ pub async fn sync_auth_tokens(
     
     // 调用 Sidecar 同步 Token
     {
-        let mut manager = state.0.lock().map_err(|e| e.to_string())?;
+        let mut manager = state.lock().map_err(|e| e.to_string())?;
         if manager.is_running() {
             let result = manager.call(
                 "sync_auth_tokens",
@@ -444,7 +476,7 @@ pub fn init_sidecar(
     sidecar_path: String,
     state: State<SidecarState>,
 ) -> Result<String, String> {
-    let mut manager = state.0.lock().map_err(|e| e.to_string())?;
+    let mut manager = state.lock().map_err(|e| e.to_string())?;
     manager.spawn(&sidecar_path)?;
     Ok("Sidecar 启动成功".to_string())
 }
@@ -452,7 +484,7 @@ pub fn init_sidecar(
 /// 关闭 Sidecar
 #[tauri::command]
 pub fn shutdown_sidecar(state: State<SidecarState>) -> Result<String, String> {
-    let mut manager = state.0.lock().map_err(|e| e.to_string())?;
+    let mut manager = state.lock().map_err(|e| e.to_string())?;
     manager.shutdown()?;
     Ok("Sidecar 已关闭".to_string())
 }
@@ -460,7 +492,7 @@ pub fn shutdown_sidecar(state: State<SidecarState>) -> Result<String, String> {
 /// Sidecar 健康检查
 #[tauri::command]
 pub fn sidecar_health_check(state: State<SidecarState>) -> Result<bool, String> {
-    let mut manager = state.0.lock().map_err(|e| e.to_string())?;
+    let mut manager = state.lock().map_err(|e| e.to_string())?;
     manager.health_check()
 }
 
@@ -495,7 +527,7 @@ pub async fn execute_ai_writing(
     state: State<'_, SidecarState>,
 ) -> Result<AIWritingResponse, String> {
     // 获取 Sidecar 管理器
-    let mut manager = state.0.lock().map_err(|e| e.to_string())?;
+    let mut manager = state.lock().map_err(|e| e.to_string())?;
 
     // 检查 Sidecar 是否运行
     if !manager.is_running() {
@@ -850,7 +882,7 @@ use crate::db::{DbState, CreateProject as DbCreateProject, CreateContent as DbCr
 /// 初始化数据库
 #[tauri::command]
 pub fn db_init(state: State<DbState>) -> Result<String, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     if db.is_some() {
         Ok("数据库已初始化".to_string())
     } else {
@@ -861,7 +893,7 @@ pub fn db_init(state: State<DbState>) -> Result<String, String> {
 /// 获取本地项目列表
 #[tauri::command]
 pub fn db_list_projects(user_id: String, state: State<DbState>) -> Result<serde_json::Value, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
     let projects = repo.list_projects(&user_id).map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(projects).unwrap())
@@ -870,7 +902,7 @@ pub fn db_list_projects(user_id: String, state: State<DbState>) -> Result<serde_
 /// 创建本地项目
 #[tauri::command]
 pub fn db_create_project(user_id: String, data: DbCreateProject, state: State<DbState>) -> Result<serde_json::Value, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
     let project = repo.create_project(&user_id, &data).map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(project).unwrap())
@@ -879,7 +911,7 @@ pub fn db_create_project(user_id: String, data: DbCreateProject, state: State<Db
 /// 删除本地项目
 #[tauri::command]
 pub fn db_delete_project(id: String, state: State<DbState>) -> Result<String, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
     repo.delete_project(&id).map_err(|e| e.to_string())?;
     Ok("删除成功".to_string())
@@ -888,7 +920,7 @@ pub fn db_delete_project(id: String, state: State<DbState>) -> Result<String, St
 /// 获取本地内容列表
 #[tauri::command]
 pub fn db_list_contents(project_id: String, state: State<DbState>) -> Result<serde_json::Value, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
     let contents = repo.list_contents(&project_id).map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(contents).unwrap())
@@ -897,7 +929,7 @@ pub fn db_list_contents(project_id: String, state: State<DbState>) -> Result<ser
 /// 创建本地内容
 #[tauri::command]
 pub fn db_create_content(user_id: String, data: DbCreateContent, state: State<DbState>) -> Result<serde_json::Value, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
     let content = repo.create_content(&user_id, &data).map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(content).unwrap())
@@ -906,7 +938,7 @@ pub fn db_create_content(user_id: String, data: DbCreateContent, state: State<Db
 /// 更新本地内容
 #[tauri::command]
 pub fn db_update_content(id: String, title: Option<String>, text_content: Option<String>, state: State<DbState>) -> Result<String, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
     repo.update_content(&id, title.as_deref(), text_content.as_deref()).map_err(|e| e.to_string())?;
     Ok("更新成功".to_string())
@@ -915,7 +947,7 @@ pub fn db_update_content(id: String, title: Option<String>, text_content: Option
 /// 删除本地内容
 #[tauri::command]
 pub fn db_delete_content(id: String, state: State<DbState>) -> Result<String, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
     repo.delete_content(&id).map_err(|e| e.to_string())?;
     Ok("删除成功".to_string())
@@ -924,7 +956,7 @@ pub fn db_delete_content(id: String, state: State<DbState>) -> Result<String, St
 /// 获取本地平台账号列表
 #[tauri::command]
 pub fn db_list_accounts(project_id: String, state: State<DbState>) -> Result<serde_json::Value, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
     let accounts = repo.list_platform_accounts(&project_id).map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(accounts).unwrap())
@@ -933,7 +965,7 @@ pub fn db_list_accounts(project_id: String, state: State<DbState>) -> Result<ser
 /// 创建本地平台账号
 #[tauri::command]
 pub fn db_create_account(user_id: String, project_id: String, platform: String, account_id: String, account_name: Option<String>, state: State<DbState>) -> Result<serde_json::Value, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
     // 确保项目存在（满足外键约束）
     repo.ensure_project_exists(&project_id, &user_id).map_err(|e| e.to_string())?;
@@ -944,7 +976,7 @@ pub fn db_create_account(user_id: String, project_id: String, platform: String, 
 /// 删除本地平台账号
 #[tauri::command]
 pub fn db_delete_account(id: String, state: State<DbState>) -> Result<String, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
     repo.delete_platform_account(&id).map_err(|e| e.to_string())?;
     Ok("删除成功".to_string())
@@ -953,7 +985,7 @@ pub fn db_delete_account(id: String, state: State<DbState>) -> Result<String, St
 /// 获取本地发布任务列表
 #[tauri::command]
 pub fn db_list_publications(content_id: String, state: State<DbState>) -> Result<serde_json::Value, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
     let publications = repo.list_publications(&content_id).map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(publications).unwrap())
@@ -962,7 +994,7 @@ pub fn db_list_publications(content_id: String, state: State<DbState>) -> Result
 /// 创建本地发布任务
 #[tauri::command]
 pub fn db_create_publication(user_id: String, data: DbCreatePublication, state: State<DbState>) -> Result<serde_json::Value, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
     let publication = repo.create_publication(&user_id, &data).map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(publication).unwrap())
@@ -971,7 +1003,7 @@ pub fn db_create_publication(user_id: String, data: DbCreatePublication, state: 
 /// 更新发布任务状态
 #[tauri::command]
 pub fn db_update_publication_status(id: String, status: String, error_message: Option<String>, state: State<DbState>) -> Result<String, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
     repo.update_publication_status(&id, &status, error_message.as_deref()).map_err(|e| e.to_string())?;
     Ok("更新成功".to_string())
@@ -979,26 +1011,26 @@ pub fn db_update_publication_status(id: String, status: String, error_message: O
 
 /// 同步用户信息到本地数据库
 #[tauri::command]
-pub fn sync_user_to_local(user_id: String, email: Option<String>, username: Option<String>, nickname: Option<String>, avatar_url: Option<String>, state: State<DbState>) -> Result<String, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+pub fn sync_user_to_local(user_id: String, email: Option<String>, username: Option<String>, nickname: Option<String>, avatar: Option<String>, state: State<DbState>) -> Result<String, String> {
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
-    repo.sync_user(&user_id, email.as_deref(), username.as_deref(), nickname.as_deref(), avatar_url.as_deref()).map_err(|e| e.to_string())?;
+    repo.sync_user(&user_id, email.as_deref(), username.as_deref(), nickname.as_deref(), avatar.as_deref()).map_err(|e| e.to_string())?;
     Ok("用户同步成功".to_string())
 }
 
 /// 同步项目信息到本地数据库
 #[tauri::command]
 pub fn sync_project_to_local(project_id: String, user_id: String, name: String, description: Option<String>, state: State<DbState>) -> Result<String, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
-    repo.sync_project(&project_id, &user_id, &name, description.as_deref()).map_err(|e| e.to_string())?;
+    repo.sync_project(&project_id, &user_id, &name, description.as_deref(), None).map_err(|e| e.to_string())?;
     Ok("项目同步成功".to_string())
 }
 
 /// 启动平台登录 - 打开浏览器让用户登录
 #[tauri::command]
 pub fn start_platform_login(platform: String, state: State<SidecarState>) -> Result<serde_json::Value, String> {
-    let mut manager = state.0.lock().map_err(|e| e.to_string())?;
+    let mut manager = state.lock().map_err(|e| e.to_string())?;
     let result = manager.call("start_platform_login", serde_json::json!({
         "platform": platform
     })).map_err(|e| e.to_string())?;
@@ -1008,7 +1040,7 @@ pub fn start_platform_login(platform: String, state: State<SidecarState>) -> Res
 /// 检查平台登录状态
 #[tauri::command]
 pub fn check_platform_login_status(platform: String, account_id: String, state: State<SidecarState>) -> Result<serde_json::Value, String> {
-    let mut manager = state.0.lock().map_err(|e| e.to_string())?;
+    let mut manager = state.lock().map_err(|e| e.to_string())?;
     let result = manager.call("check_login_status", serde_json::json!({
         "platform": platform,
         "account_id": account_id
@@ -1019,7 +1051,7 @@ pub fn check_platform_login_status(platform: String, account_id: String, state: 
 /// 关闭登录浏览器
 #[tauri::command]
 pub fn close_login_browser(platform: String, account_id: String, state: State<SidecarState>) -> Result<serde_json::Value, String> {
-    let mut manager = state.0.lock().map_err(|e| e.to_string())?;
+    let mut manager = state.lock().map_err(|e| e.to_string())?;
     let result = manager.call("close_login_browser", serde_json::json!({
         "platform": platform,
         "account_id": account_id
@@ -1027,12 +1059,10 @@ pub fn close_login_browser(platform: String, account_id: String, state: State<Si
     Ok(result)
 }
 
-// ============ 账号同步命令 ============
-
 /// 同步单个账号的用户资料
 #[tauri::command]
 pub fn sync_account(platform: String, account_id: String, state: State<SidecarState>) -> Result<serde_json::Value, String> {
-    let mut manager = state.0.lock().map_err(|e| e.to_string())?;
+    let mut manager = state.lock().map_err(|e| e.to_string())?;
     let result = manager.call("sync_account", serde_json::json!({
         "platform": platform,
         "account_id": account_id
@@ -1043,7 +1073,7 @@ pub fn sync_account(platform: String, account_id: String, state: State<SidecarSt
 /// 同步所有账号
 #[tauri::command]
 pub fn sync_all_accounts(state: State<SidecarState>) -> Result<serde_json::Value, String> {
-    let mut manager = state.0.lock().map_err(|e| e.to_string())?;
+    let mut manager = state.lock().map_err(|e| e.to_string())?;
     let result = manager.call("sync_all_accounts", serde_json::json!({})).map_err(|e| e.to_string())?;
     Ok(result)
 }
@@ -1058,10 +1088,50 @@ pub fn db_update_account_profile(
     following_count: i64,
     state: State<DbState>,
 ) -> Result<String, String> {
-    let db = state.0.lock().map_err(|e| e.to_string())?;
+    let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
     repo.update_platform_account_profile(&id, account_name.as_deref(), avatar_url.as_deref(), followers_count, following_count)
         .map_err(|e| e.to_string())?;
     Ok("更新成功".to_string())
 }
 
+// ============ 同步服务命令 ============
+
+/// 开始全量同步
+#[tauri::command]
+pub async fn start_sync(app: AppHandle, user_id: String, token: String, state: State<'_, SyncState>) -> Result<String, String> {
+    let engine = {
+        let guard = state.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("SyncEngine not initialized")?.clone()
+    };
+
+    // 异步执行，不阻塞命令返回
+    // 注意：这里我们使用 tauri::async_runtime::spawn 来执行后台任务
+    // 实际生产中可能需要更好的任务管理
+    tauri::async_runtime::spawn(async move {
+        match engine.start_sync(user_id, token).await {
+            Ok(_) => {
+                let _ = app.emit("sync-complete", ());
+            }
+            Err(e) => {
+                eprintln!("[Sync] Background sync failed: {}", e);
+                // 发送错误事件给前端
+                let _ = app.emit("sync-error", e);
+            }
+        }
+    });
+
+    Ok("Sync started".to_string())
+}
+
+/// 获取同步状态
+#[tauri::command]
+pub fn get_sync_status(state: State<'_, SyncState>) -> Result<serde_json::Value, String> {
+    let engine = {
+        let guard = state.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("SyncEngine not initialized")?.clone()
+    };
+    
+    let status = engine.get_status();
+    Ok(serde_json::to_value(status).unwrap())
+}

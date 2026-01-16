@@ -46,9 +46,12 @@ class StagehandClient:
         
         # 检查 LLM Token 是否存在
         try:
+            import os
             from agent_core.llm.config import LLMConfigManager
             config_manager = LLMConfigManager()
-            llm_config = config_manager.load()
+            # 优先使用环境变量，默认为 development (与 main.py 保持一致)
+            env = os.environ.get("AI_CREATOR_ENV", "development")
+            llm_config = config_manager.load(env)
             return bool(llm_config.api_token)
         except Exception:
             return False

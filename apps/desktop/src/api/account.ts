@@ -2,12 +2,11 @@
  * 平台账号 API
  * @author Ysf
  */
-import request from './request';
+import request from "./request";
 
 export interface CloudPlatformAccount {
-  id?: number;
-  uuid?: string;
-  project_id: number;
+  id?: string;
+  project_id: string;
   platform: string;
   account_id: string;
   account_name?: string;
@@ -21,26 +20,47 @@ export interface CloudPlatformAccount {
 }
 
 // 获取项目下的平台账号列表
-export function getAccountsApi(projectId: number) {
-  return request.get<any, CloudPlatformAccount[]>(`/projects/${projectId}/accounts`);
+export function getAccountsApi(projectId: string) {
+  return request.get<any, CloudPlatformAccount[]>(
+    `/projects/${projectId}/accounts`,
+  );
 }
 
 // 创建平台账号
-export function createAccountApi(projectId: number, data: Omit<CloudPlatformAccount, 'id' | 'uuid' | 'project_id'>) {
-  return request.post<any, CloudPlatformAccount>(`/projects/${projectId}/accounts`, data);
+export function createAccountApi(
+  projectId: string,
+  data: Omit<CloudPlatformAccount, "id" | "project_id">,
+) {
+  return request.post<any, CloudPlatformAccount>(
+    `/projects/${projectId}/accounts`,
+    data,
+  );
 }
 
 // 更新平台账号
-export function updateAccountApi(projectId: number, accountId: number, data: Partial<CloudPlatformAccount>) {
-  return request.put<any, CloudPlatformAccount>(`/projects/${projectId}/accounts/${accountId}`, data);
+export function updateAccountApi(
+  projectId: string,
+  accountId: string,
+  data: Partial<CloudPlatformAccount>,
+) {
+  return request.put<any, CloudPlatformAccount>(
+    `/projects/${projectId}/accounts/${accountId}`,
+    data,
+  );
 }
 
 // 删除平台账号
-export function deleteAccountApi(projectId: number, accountId: number) {
+export function deleteAccountApi(projectId: string, accountId: string) {
   return request.delete(`/projects/${projectId}/accounts/${accountId}`);
 }
 
 // 同步账号资料到云端
-export function syncAccountToCloudApi(projectId: number, data: CloudPlatformAccount) {
-  return request.post<any, CloudPlatformAccount>(`/projects/${projectId}/accounts/sync`, data);
+export function syncAccountToCloudApi(
+  projectId: string,
+  data: CloudPlatformAccount,
+) {
+  return request.post<any, CloudPlatformAccount>(
+    `/projects/${projectId}/accounts/sync`,
+    data,
+  );
 }

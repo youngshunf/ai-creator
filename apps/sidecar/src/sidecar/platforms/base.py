@@ -61,6 +61,16 @@ class AdaptedContent:
     warnings: list[str] = field(default_factory=list)
 
 
+@dataclass
+class PublishResult:
+    """发布结果"""
+    success: bool
+    platform_post_id: Optional[str] = None
+    platform_post_url: Optional[str] = None
+    error_message: Optional[str] = None
+    extra: dict = field(default_factory=dict)
+
+
 class PlatformAdapter(ABC):
     """平台适配器基类"""
 
@@ -98,7 +108,7 @@ class PlatformAdapter(ABC):
         adapted_content = content
         if len(content) > self.spec.content_max_length:
             adapted_content = content[:self.spec.content_max_length - 3] + "..."
-            warnings.append(f"正文超长，已截断至 {self.spec.content_max_length} 字符")
+            warnings.append(f"内容超长，已截断至 {self.spec.content_max_length} 字符")
 
         # 图片适配
         adapted_images = images[:self.spec.image_max_count]
@@ -123,6 +133,20 @@ class PlatformAdapter(ABC):
             hashtags=adapted_hashtags,
             warnings=warnings,
         )
+
+    @abstractmethod
+    async def publish(self, page: Any, content: AdaptedContent) -> PublishResult:
+        """
+        发布内容
+        
+        Args:
+            page: Playwright Page 对象
+            content: 适配后的内容
+            
+        Returns:
+            PublishResult: 发布结果
+        """
+        pass
 
     def validate_content(self, content: AdaptedContent) -> tuple[bool, list[str]]:
         """验证内容是否符合平台规范"""
