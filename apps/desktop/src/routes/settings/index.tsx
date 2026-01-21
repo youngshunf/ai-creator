@@ -154,7 +154,7 @@ function SettingsPage() {
 
       {/* 内容区域 */}
       <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-2xl mx-auto">
+        <div className="w-full">
           {activeTab === "credentials" && <CredentialManager />}
 
           {activeTab === "llm" && (

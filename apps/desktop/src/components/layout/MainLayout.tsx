@@ -3,10 +3,10 @@
  * @author Ysf
  * @updated 2026-01-07
  */
-import { ReactNode, useEffect, useRef } from 'react';
-import { Sidebar } from './Sidebar';
-import { Header } from './Header';
-import { useAppStore } from '@/stores/useAppStore';
+import { ReactNode, useEffect, useRef } from "react";
+import { Sidebar } from "./Sidebar";
+import { Header } from "./Header";
+import { useAppStore } from "@/stores/useAppStore";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -15,7 +15,8 @@ interface MainLayoutProps {
 const MIN_WIDTH_FOR_EXPANDED = 1024; // md 断点
 
 export function MainLayout({ children }: MainLayoutProps) {
-  const { fontSize, theme, sidebarCollapsed, setSidebarCollapsed } = useAppStore();
+  const { fontSize, theme, sidebarCollapsed, setSidebarCollapsed } =
+    useAppStore();
   const userManuallyToggled = useRef(false);
 
   // 同步主题和字体大小
@@ -23,14 +24,22 @@ export function MainLayout({ children }: MainLayoutProps) {
     const html = document.documentElement;
 
     // Font Size
-    html.classList.remove('font-size-small', 'font-size-medium', 'font-size-large');
+    html.classList.remove(
+      "font-size-small",
+      "font-size-medium",
+      "font-size-large",
+    );
     html.classList.add(`font-size-${fontSize}`);
 
     // Theme
-    if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      html.classList.add('dark');
+    if (
+      theme === "dark" ||
+      (theme === "system" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches)
+    ) {
+      html.classList.add("dark");
     } else {
-      html.classList.remove('dark');
+      html.classList.remove("dark");
     }
   }, [fontSize, theme]);
 
@@ -42,9 +51,9 @@ export function MainLayout({ children }: MainLayoutProps) {
       }
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
     handleResize();
-    return () => window.removeEventListener('resize', handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, [sidebarCollapsed, setSidebarCollapsed]);
 
   return (
@@ -52,7 +61,9 @@ export function MainLayout({ children }: MainLayoutProps) {
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-hidden p-6 scrollbar-thin relative z-0">{children}</main>
+        <main className="flex-1 overflow-y-auto p-6 scrollbar-thin relative z-0">
+          {children}
+        </main>
       </div>
     </div>
   );

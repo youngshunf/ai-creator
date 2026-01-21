@@ -261,7 +261,7 @@ function ProjectSettingsPage() {
         {/* 编辑表单 */}
         {isEditing && (
           <div className="flex-1 overflow-y-auto">
-            <div className="max-w-2xl space-y-6">
+            <div className="w-full space-y-6">
               {/* 基本信息 */}
               <div className="p-6 rounded-xl border border-slate-200 dark:border-slate-700">
                 <h3 className="font-semibold mb-4">基本信息</h3>

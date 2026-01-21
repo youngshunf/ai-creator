@@ -83,6 +83,7 @@ pub fn run() {
             commands::start_platform_login,
             commands::check_platform_login_status,
             commands::close_login_browser,
+            commands::open_session_browser,
             // 账号同步命令
             commands::sync_account,
             commands::sync_all_accounts,

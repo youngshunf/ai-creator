@@ -15,6 +15,7 @@ interface AddAccountDialogProps {
   open: boolean;
   onClose: () => void;
   projectId: string;
+  onSuccess?: () => void;
 }
 
 /**
@@ -28,6 +29,7 @@ export function AddAccountDialog({
   open,
   onClose,
   projectId,
+  onSuccess,
 }: AddAccountDialogProps) {
   const { platforms, addAccount, syncAccount } = useAccountStore();
   const [step, setStep] = useState<"select" | "login">("select");
@@ -178,11 +180,16 @@ export function AddAccountDialog({
             // 3. 后台静默同步账号资料（不阻塞 UI）
             setLoginStatus("账号添加成功！");
             // 异步同步，不等待结果
-            syncAccount(newAccount.id).then(() => {
-              console.log("[LOGIN] 账号资料同步完成");
-            }).catch((syncErr) => {
-              console.warn("[LOGIN] 同步账号资料失败:", syncErr);
-            });
+            syncAccount(newAccount.id)
+              .then(() => {
+                console.log("[LOGIN] 账号资料同步完成");
+                // 刷新列表
+                onSuccess?.();
+              })
+              .catch((syncErr) => {
+                console.warn("[LOGIN] 同步账号资料失败:", syncErr);
+                onSuccess?.(); // 即使同步失败也刷新，显示基本信息
+              });
 
             setIsLoading(false);
             setTimeout(() => handleClose(), 800);

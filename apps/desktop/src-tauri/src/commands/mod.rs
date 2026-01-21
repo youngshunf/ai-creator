@@ -1068,6 +1068,23 @@ pub fn close_login_browser(platform: String, account_id: String, state: State<Si
     Ok(result)
 }
 
+/// 打开带有会话上下文的浏览器窗口
+#[tauri::command]
+pub fn open_session_browser(
+    platform: String,
+    account_id: String,
+    state: State<SidecarState>
+) -> Result<serde_json::Value, String> {
+    let mut manager = state.lock().map_err(|e| e.to_string())?;
+    
+    let result = manager.call("open_session_browser", serde_json::json!({
+        "platform": platform,
+        "account_id": account_id
+    })).map_err(|e| e.to_string())?;
+    
+    Ok(result)
+}
+
 /// 同步单个账号的用户资料
 #[tauri::command]
 pub fn sync_account(platform: String, account_id: String, state: State<SidecarState>) -> Result<serde_json::Value, String> {

@@ -3,21 +3,31 @@
  * @author Ysf
  * @updated 2026-01-07
  */
-import { createFileRoute, Link } from '@tanstack/react-router';
-import { Eye, TrendingUp, UserPlus, MessageCircle, TrendingDown, RefreshCw, Plus } from 'lucide-react';
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  Eye,
+  TrendingUp,
+  UserPlus,
+  MessageCircle,
+  TrendingDown,
+  RefreshCw,
+  Plus,
+} from "lucide-react";
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
 function HomePage() {
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
+    <div className="w-full space-y-8 animate-fade-in">
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="glass-card p-6 hover:shadow-lg transition-shadow cursor-pointer">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-slate-500 dark:text-slate-400 font-medium">昨日总阅读</span>
+            <span className="text-slate-500 dark:text-slate-400 font-medium">
+              昨日总阅读
+            </span>
             <div className="p-2 rounded-lg bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400">
               <Eye className="w-5 h-5" />
             </div>
@@ -33,7 +43,9 @@ function HomePage() {
 
         <div className="glass-card p-6 hover:shadow-lg transition-shadow cursor-pointer">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-slate-500 dark:text-slate-400 font-medium">新增粉丝</span>
+            <span className="text-slate-500 dark:text-slate-400 font-medium">
+              新增粉丝
+            </span>
             <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400">
               <UserPlus className="w-5 h-5" />
             </div>
@@ -49,7 +61,9 @@ function HomePage() {
 
         <div className="glass-card p-6 hover:shadow-lg transition-shadow cursor-pointer">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-slate-500 dark:text-slate-400 font-medium">全平台互动</span>
+            <span className="text-slate-500 dark:text-slate-400 font-medium">
+              全平台互动
+            </span>
             <div className="p-2 rounded-lg bg-pink-50 dark:bg-pink-500/10 text-pink-500 dark:text-pink-400">
               <MessageCircle className="w-5 h-5" />
             </div>
@@ -68,7 +82,10 @@ function HomePage() {
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-heading font-bold">近期草稿</h2>
-          <Link to="/creation" className="text-sm text-primary-600 dark:text-primary-400 hover:underline cursor-pointer">
+          <Link
+            to="/creation"
+            className="text-sm text-primary-600 dark:text-primary-400 hover:underline cursor-pointer"
+          >
             查看全部
           </Link>
         </div>
@@ -83,7 +100,9 @@ function HomePage() {
             <div className="p-4">
               <div className="flex items-center space-x-2 mb-2">
                 <span className="badge badge-error text-[10px]">小红书</span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">2小时前</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                  2小时前
+                </span>
               </div>
               <h3 className="font-medium line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                 适合夏天的5种清爽穿搭，显瘦又高级！
@@ -100,8 +119,12 @@ function HomePage() {
             </div>
             <div className="p-4">
               <div className="flex items-center space-x-2 mb-2">
-                <span className="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px]">公众号</span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">昨天</span>
+                <span className="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px]">
+                  公众号
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                  昨天
+                </span>
               </div>
               <h3 className="font-medium line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                 深入解析 AI Agent 的未来发展趋势
@@ -160,9 +183,7 @@ function HomePage() {
                 </p>
               </div>
             </div>
-            <button className="btn-cta text-sm">
-              重新登录
-            </button>
+            <button className="btn-cta text-sm">重新登录</button>
           </div>
         </div>
       </section>

@@ -91,6 +91,7 @@ class SidecarServer:
             "start_platform_login": self._handle_start_platform_login,
             "check_login_status": self._handle_check_login_status,
             "close_login_browser": self._handle_close_login_browser,
+            "open_session_browser": self._handle_open_session_browser,
             # 发布管理
             "publish_content": self._handle_publish_content,
             # 账号同步
@@ -621,6 +622,61 @@ class SidecarServer:
             del self._login_browser_manager[session_id]
 
         return {"status": "closed", "message": "浏览器已关闭"}
+
+    async def _handle_open_session_browser(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """打开带有会话上下文的浏览器"""
+        from .platforms import get_adapter
+        from .browser.manager import BrowserSessionManager
+
+        platform = params.get("platform", "")
+        account_id = params.get("account_id", "")
+
+        if not platform or not account_id:
+            return {"success": False, "error": "Missing platform or account_id"}
+
+        logger.info(f"[BROWSER] Opening session browser: platform={platform}, account_id={account_id}")
+
+        adapter = get_adapter(platform)
+
+        # 使用共享的可见浏览器管理器（如果不存在则创建）
+        # headless=False 确保浏览器可见
+        if not hasattr(self, '_visible_browser_manager'):
+            self._visible_browser_manager = BrowserSessionManager(headless=False)
+
+        try:
+            # 获取加载了凭证的会话
+            session = await self._visible_browser_manager.get_session(
+                platform=platform,
+                account_id=account_id,
+                load_credentials=True,
+            )
+
+            # 导航到平台的登录/主页 URL
+            target_url = adapter.login_url
+            logger.info(f"[BROWSER] Navigating to: {target_url}")
+            await session.page.goto(target_url, wait_until="domcontentloaded")
+
+            # 手动注入 localStorage（Playwright 的 load_storage_state 只处理 cookies）
+            await self._visible_browser_manager.inject_local_storage(
+                session.page, platform, account_id
+            )
+            
+            # 重新加载页面以应用 localStorage 更改
+            await session.page.reload()
+
+            return {
+                "success": True,
+                "message": "Browser opened with session",
+                "platform": platform,
+                "account_id": account_id
+            }
+
+        except Exception as e:
+            logger.error(f"[BROWSER] Failed to open browser: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e)
+            }
 
     async def _check_platform_logged_in(self, page, platform: str) -> bool:
         """检查平台是否已登录 - 同时检测 cookie 和 localStorage"""

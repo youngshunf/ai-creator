@@ -23,6 +23,7 @@ export interface PlatformAccount {
   followers_count: number;
   following_count: number;
   posts_count: number;
+  likes_count: number;
   created_at: number;
   updated_at: number;
   last_profile_sync_at: number | null;
@@ -141,7 +142,9 @@ export const useAccountStore = create<AccountState>((set, get) => ({
     await new Promise((r) => setTimeout(r, 50));
     try {
       const authUser = useAuthStore.getState().user;
-      const effectiveUserId = authUser?.uuid ? String(authUser.uuid) : "current-user";
+      const effectiveUserId = authUser?.uuid
+        ? String(authUser.uuid)
+        : "current-user";
       const account = await invoke<PlatformAccount>("db_create_account", {
         userId: effectiveUserId,
         projectId,
@@ -240,8 +243,10 @@ export const useAccountStore = create<AccountState>((set, get) => ({
         // 映射后端字段到前端字段（兼容 Stagehand / Playwright 两种格式）
         const profile = result.profile;
 
-        const nickname = (profile.nickname as string) || account.account_name || null;
-        const avatarUrl = (profile.avatar_url as string) || account.avatar_url || null;
+        const nickname =
+          (profile.nickname as string) || account.account_name || null;
+        const avatarUrl =
+          (profile.avatar_url as string) || account.avatar_url || null;
 
         const rawFollowers =
           (profile.followers_count as number | undefined) ??
@@ -261,17 +266,24 @@ export const useAccountStore = create<AccountState>((set, get) => ({
           (profile.collects as number | undefined);
 
         const followers_count =
-          typeof rawFollowers === "number" ? rawFollowers : account.followers_count;
+          typeof rawFollowers === "number"
+            ? rawFollowers
+            : account.followers_count;
         const following_count =
-          typeof rawFollowing === "number" ? rawFollowing : account.following_count;
+          typeof rawFollowing === "number"
+            ? rawFollowing
+            : account.following_count;
         const posts_count =
           typeof rawPosts === "number" ? rawPosts : account.posts_count;
 
         const extraStats: Record<string, unknown> = {};
         if (typeof rawLikes === "number") extraStats.likes_count = rawLikes;
-        if (typeof rawFavorites === "number") extraStats.favorites_count = rawFavorites;
+        if (typeof rawFavorites === "number")
+          extraStats.favorites_count = rawFavorites;
         const metadataJson =
-          Object.keys(extraStats).length > 0 ? JSON.stringify(extraStats) : null;
+          Object.keys(extraStats).length > 0
+            ? JSON.stringify(extraStats)
+            : null;
 
         const updatedAccount = {
           account_name: nickname,
@@ -279,6 +291,8 @@ export const useAccountStore = create<AccountState>((set, get) => ({
           followers_count,
           following_count,
           posts_count,
+          likes_count:
+            typeof rawLikes === "number" ? rawLikes : account.likes_count || 0,
         };
 
         // 保存到本地数据库（包括作品数和扩展统计）
