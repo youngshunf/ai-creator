@@ -1,9 +1,9 @@
 """
 账号同步服务 - 静默获取并同步用户资料
 
-支持两种模式：
-- Stagehand: AI 驱动的结构化数据提取（推荐）
-- Playwright: 传统选择器方式（Fallback）
+策略优先级：
+1. Playwright + 平台适配器（快速、可靠、无需 LLM）
+2. browser-use AI（降级方案，适应 UI 变化）
 
 @author Ysf
 @date 2026-01-10
@@ -27,23 +27,32 @@ class SyncResult:
     account_id: str
     profile: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
-    strategy: str = "playwright"  # stagehand | playwright
+    strategy: str = "playwright"  # playwright | browser-use
 
 
 class AccountSyncService:
     """
     账号同步服务 - 静默获取用户资料
     
-    支持 Stagehand AI 驱动和 Playwright 传统两种模式。
+    优先使用 Playwright + 平台适配器，失败后降级到 browser-use AI。
     """
 
-    # 平台 URL 映射
+    # 平台主站 URL 映射（用于加载 cookies）
     PLATFORM_URLS = {
-        "xiaohongshu": "https://creator.xiaohongshu.com",
-        "douyin": "https://creator.douyin.com",
-        "bilibili": "https://member.bilibili.com",
+        "xiaohongshu": "https://www.xiaohongshu.com",
+        "douyin": "https://www.douyin.com",
+        "bilibili": "https://www.bilibili.com",
         "weibo": "https://weibo.com",
-        "kuaishou": "https://cp.kuaishou.com",
+        "kuaishou": "https://www.kuaishou.com",
+    }
+    
+    # 用户主页 URL 模板
+    PROFILE_URL_TEMPLATES = {
+        "xiaohongshu": "https://www.xiaohongshu.com/user/profile/{user_id}",
+        "douyin": "https://www.douyin.com/user/{user_id}",
+        "bilibili": "https://space.bilibili.com/{user_id}",
+        "weibo": "https://weibo.com/u/{user_id}",
+        "kuaishou": "https://www.kuaishou.com/profile/{user_id}",
     }
 
     def __init__(self, credentials_dir: str = None):
@@ -53,110 +62,68 @@ class AccountSyncService:
         self, 
         platform: str, 
         account_id: str,
-        use_stagehand: bool = True,
         headless: bool = True,
+        use_browser_use_fallback: bool = True,
     ) -> SyncResult:
         """
         同步单个账号的用户资料
 
+        策略：
+        1. 优先使用 Playwright + 平台适配器（快速、可靠）
+        2. 失败后降级到 browser-use AI（自愈能力）
+
         Args:
             platform: 平台名称
             account_id: 账号ID
-            use_stagehand: 是否使用 Stagehand（推荐，需要 LLM Token）
             headless: 是否无头模式
+            use_browser_use_fallback: 是否启用 browser-use 降级
 
         Returns:
             同步结果
         """
-        # 检查 Stagehand 是否可用（需要 LLM Token）
-        if use_stagehand:
-            from ..browser.stagehand_client import StagehandClient
-            
-            if not StagehandClient.is_available():
-                logger.info(
-                    f"[SYNC] Stagehand 不可用（未登录 CreatorFlow 或 stagehand 未安装），"
-                    f"使用 Playwright 模式"
-                )
-                use_stagehand = False
-        
-        if use_stagehand:
-            try:
-                return await self._sync_with_stagehand(platform, account_id, headless)
-            except Exception as e:
-                logger.warning(f"[SYNC] Stagehand 同步失败，降级到 Playwright: {e}")
-                return await self._sync_with_playwright(platform, account_id, headless=False)
-        else:
-            return await self._sync_with_playwright(platform, account_id, headless)
-    
-    async def _sync_with_stagehand(
-        self, 
-        platform: str, 
-        account_id: str,
-        headless: bool = True,
-    ) -> SyncResult:
-        """
-        使用 Stagehand AI 同步
-        
-        优势：
-        - 静默运行（无头模式）
-        - 自愈能力（适应 UI 变化）
-        - 结构化提取（Pydantic Schema）
-        """
-        from ..browser.hybrid_manager import HybridBrowserManager
-        
-        manager = None
+        # 优先使用 Playwright
         try:
-            manager = HybridBrowserManager(headless=headless)
-            
-            platform_url = self.PLATFORM_URLS.get(platform)
-            if not platform_url:
-                return SyncResult(
-                    success=False, platform=platform, account_id=account_id,
-                    error=f"不支持的平台: {platform}",
-                    strategy="stagehand"
-                )
-            
-            # 使用 Stagehand 同步
-            profile = await manager.sync_profile(
-                platform=platform,
-                account_id=account_id,
-                platform_url=platform_url,
-            )
-            
-            logger.info(f"[SYNC] Stagehand 同步成功: {platform}:{account_id}, nickname={profile.nickname}")
-            
-            return SyncResult(
-                success=True,
-                platform=platform,
-                account_id=account_id,
-                profile={
-                    "nickname": profile.nickname,
-                    "avatar_url": profile.avatar_url,
-                    "followers": profile.followers,
-                    "following": profile.following,
-                    "user_id": profile.user_id,
-                    "bio": profile.bio,
-                },
-                strategy="stagehand"
-            )
-            
+            result = await self._sync_with_playwright(platform, account_id, headless)
+            if result.success:
+                return result
+            # Playwright 返回失败但未抛异常，尝试降级
+            logger.warning(f"[SYNC] Playwright 同步失败: {result.error}")
         except Exception as e:
-            logger.error(f"[SYNC] Stagehand 同步失败: {platform}:{account_id}, error={e}")
-            raise
-        finally:
-            if manager:
-                await manager.close()
+            logger.warning(f"[SYNC] Playwright 同步异常: {e}")
+        
+        # 降级到 browser-use
+        if use_browser_use_fallback:
+            logger.info(f"[SYNC] 降级到 browser-use AI 同步")
+            try:
+                return await self._sync_with_browser_use(platform, account_id, headless)
+            except Exception as e:
+                logger.error(f"[SYNC] browser-use 同步也失败: {e}")
+                return SyncResult(
+                    success=False,
+                    platform=platform,
+                    account_id=account_id,
+                    error=f"所有同步方式都失败: {e}",
+                    strategy="browser-use"
+                )
+        
+        return SyncResult(
+            success=False,
+            platform=platform,
+            account_id=account_id,
+            error="Playwright 同步失败，未启用降级",
+            strategy="playwright"
+        )
     
     async def _sync_with_playwright(
         self, 
         platform: str, 
         account_id: str,
-        headless: bool = False,
+        headless: bool = True,
     ) -> SyncResult:
         """
-        使用 Playwright 传统方式同步（Fallback）
+        使用 Playwright + 平台适配器同步（首选方案）
         
-        注意：非无头模式可能会弹出浏览器窗口
+        优势：快速、可靠、无需 LLM Token
         """
         browser_manager = None
         try:
@@ -190,9 +157,15 @@ class AccountSyncService:
 
             if profile:
                 logger.info(f"[SYNC] Playwright 同步成功: {platform}:{account_id}, nickname={profile.nickname}")
+                # 转换为前端期望的字段格式
+                profile_dict = asdict(profile)
+                # 从 extra 中提取 collects_count 并映射为 collects
+                extra = profile_dict.pop("extra", {}) or {}
+                if "collects_count" in extra:
+                    profile_dict["collects"] = extra["collects_count"]
                 return SyncResult(
                     success=True, platform=platform, account_id=account_id,
-                    profile=asdict(profile),
+                    profile=profile_dict,
                     strategy="playwright"
                 )
             else:
@@ -212,3 +185,144 @@ class AccountSyncService:
         finally:
             if browser_manager:
                 await browser_manager.close()
+    
+    async def _sync_with_browser_use(
+        self, 
+        platform: str, 
+        account_id: str,
+        headless: bool = True,
+    ) -> SyncResult:
+        """
+        使用 browser-use AI 同步（降级方案）
+        
+        优势：自愈能力，适应 UI 变化
+        需要：LLM Token
+        """
+        try:
+            from browser_use import Agent, Browser, BrowserConfig
+            from langchain_openai import ChatOpenAI
+        except ImportError:
+            return SyncResult(
+                success=False, platform=platform, account_id=account_id,
+                error="browser-use 未安装，请运行: pip install browser-use langchain-openai",
+                strategy="browser-use"
+            )
+        
+        # 获取 LLM 配置
+        import os
+        from agent_core.llm.config import LLMConfigManager
+        
+        config_manager = LLMConfigManager()
+        env = os.environ.get("AI_CREATOR_ENV", "development")
+        llm_config = config_manager.load(env)
+        
+        if not llm_config.api_token:
+            return SyncResult(
+                success=False, platform=platform, account_id=account_id,
+                error="browser-use 需要 LLM Token，请先登录 CreatorFlow",
+                strategy="browser-use"
+            )
+        
+        # 加载凭证
+        import json
+        from pathlib import Path
+        
+        cred_path = Path(os.path.expanduser(
+            f"~/.ai-creator/credentials/{platform}/{account_id}_state.json"
+        ))
+        
+        cookies = []
+        if cred_path.exists():
+            try:
+                with open(cred_path, "r", encoding="utf-8") as f:
+                    state = json.load(f)
+                cookies = state.get("cookies", [])
+            except Exception as e:
+                logger.warning(f"[SYNC] 加载凭证失败: {e}")
+        
+        # 获取用户主页 URL
+        profile_url_template = self.PROFILE_URL_TEMPLATES.get(platform)
+        if not profile_url_template:
+            return SyncResult(
+                success=False, platform=platform, account_id=account_id,
+                error=f"不支持的平台: {platform}",
+                strategy="browser-use"
+            )
+        profile_url = profile_url_template.format(user_id=account_id)
+        
+        # 构建 LLM
+        base_url = f"{llm_config.base_url}/api/v1/llm/proxy/v1"
+        llm = ChatOpenAI(
+            model=llm_config.default_model,
+            api_key=llm_config.api_token,
+            base_url=base_url,
+            default_headers={
+                "x-api-key": llm_config.api_token,
+                "Authorization": f"Bearer {llm_config.access_token}" if llm_config.access_token else "",
+            },
+        )
+        
+        # 构建任务
+        task = f"""
+请提取当前页面用户的资料信息：
+1. 打开用户主页: {profile_url}
+2. 提取以下信息并以 JSON 格式返回：
+   - nickname: 用户昵称
+   - avatar_url: 头像URL
+   - followers_count: 粉丝数
+   - following_count: 关注数
+   - user_id: 用户ID（{account_id}）
+   - bio: 个人简介
+3. 返回格式示例: {{"nickname": "xxx", "followers_count": 1000, ...}}
+"""
+        
+        browser = None
+        try:
+            # 创建浏览器配置
+            browser_config = BrowserConfig(
+                headless=headless,
+                cookies=cookies,
+            )
+            browser = Browser(config=browser_config)
+            
+            # 创建 Agent
+            agent = Agent(
+                task=task,
+                llm=llm,
+                browser=browser,
+            )
+            
+            # 执行
+            result = await agent.run()
+            result_str = str(result)
+            
+            # 尝试解析 JSON 结果
+            import re
+            json_match = re.search(r'\{[^{}]*"nickname"[^{}]*\}', result_str)
+            if json_match:
+                profile_data = json.loads(json_match.group())
+                logger.info(f"[SYNC] browser-use 同步成功: {platform}:{account_id}")
+                return SyncResult(
+                    success=True,
+                    platform=platform,
+                    account_id=account_id,
+                    profile=profile_data,
+                    strategy="browser-use"
+                )
+            else:
+                return SyncResult(
+                    success=False, platform=platform, account_id=account_id,
+                    error=f"无法解析 AI 返回结果: {result_str[:200]}",
+                    strategy="browser-use"
+                )
+                
+        except Exception as e:
+            logger.error(f"[SYNC] browser-use 同步失败: {e}")
+            return SyncResult(
+                success=False, platform=platform, account_id=account_id,
+                error=str(e),
+                strategy="browser-use"
+            )
+        finally:
+            if browser:
+                await browser.close()

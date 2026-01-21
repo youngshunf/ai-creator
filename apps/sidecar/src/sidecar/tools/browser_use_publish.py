@@ -52,13 +52,28 @@ class BrowserUsePublisher:
             PublishResult: 发布结果
         """
         try:
-            from browser_use import Agent
+            from browser_use import Agent, Browser, BrowserConfig
             from langchain_openai import ChatOpenAI
         except ImportError:
             return PublishResult(
                 success=False,
                 platform=platform,
                 error="browser-use 未安装，请运行: pip install browser-use langchain-openai",
+            )
+
+        # 获取 LLM 配置
+        import os
+        from agent_core.llm.config import LLMConfigManager
+        
+        config_manager = LLMConfigManager()
+        env = os.environ.get("AI_CREATOR_ENV", "development")
+        llm_config = config_manager.load(env)
+        
+        if not llm_config.api_token:
+            return PublishResult(
+                success=False,
+                platform=platform,
+                error="browser-use 需要 LLM Token，请先登录 CreatorFlow",
             )
 
         # 加载凭证
@@ -74,14 +89,30 @@ class BrowserUsePublisher:
         task = self._build_publish_task(platform, title, content, images, hashtags)
 
         try:
+            # 构建 LLM（使用 CreatorFlow LLM 网关）
+            base_url = f"{llm_config.base_url}/api/v1/llm/proxy/v1"
+            llm = ChatOpenAI(
+                model=llm_config.default_model,
+                api_key=llm_config.api_token,
+                base_url=base_url,
+                default_headers={
+                    "x-api-key": llm_config.api_token,
+                    "Authorization": f"Bearer {llm_config.access_token}" if llm_config.access_token else "",
+                },
+            )
+            
+            # 创建浏览器配置
+            browser_config = BrowserConfig(
+                headless=False,  # 发布时使用有头模式便于调试
+                cookies=credentials.get("cookies", []),
+            )
+            browser = Browser(config=browser_config)
+            
             # 创建 browser-use Agent
-            llm = ChatOpenAI(model="gpt-4o")
             agent = Agent(
                 task=task,
                 llm=llm,
-                browser_context_config={
-                    "cookies": credentials.get("cookies", []),
-                },
+                browser=browser,
             )
 
             # 执行发布
@@ -172,7 +203,10 @@ class BrowserUsePublisher:
 
 async def start_platform_login(platform: str) -> Dict[str, Any]:
     """
-    启动平台扫码登录
+    启动平台扫码登录（browser-use AI 辅助）
+    
+    注意：登录主要通过 BrowserSessionManager 完成，
+    此函数仅作为备用方案。
 
     Args:
         platform: 平台名称
@@ -181,12 +215,26 @@ async def start_platform_login(platform: str) -> Dict[str, Any]:
         登录结果
     """
     try:
-        from browser_use import Agent
+        from browser_use import Agent, Browser, BrowserConfig
         from langchain_openai import ChatOpenAI
     except ImportError:
         return {
             "success": False,
             "error": "browser-use 未安装",
+        }
+    
+    # 获取 LLM 配置
+    import os
+    from agent_core.llm.config import LLMConfigManager
+    
+    config_manager = LLMConfigManager()
+    env = os.environ.get("AI_CREATOR_ENV", "development")
+    llm_config = config_manager.load(env)
+    
+    if not llm_config.api_token:
+        return {
+            "success": False,
+            "error": "browser-use 需要 LLM Token，请先登录 CreatorFlow",
         }
 
     platform_urls = {
@@ -208,9 +256,25 @@ async def start_platform_login(platform: str) -> Dict[str, Any]:
 4. 返回登录结果
 """
 
+    browser = None
     try:
-        llm = ChatOpenAI(model="gpt-4o")
-        agent = Agent(task=task, llm=llm)
+        # 构建 LLM
+        base_url = f"{llm_config.base_url}/api/v1/llm/proxy/v1"
+        llm = ChatOpenAI(
+            model=llm_config.default_model,
+            api_key=llm_config.api_token,
+            base_url=base_url,
+            default_headers={
+                "x-api-key": llm_config.api_token,
+                "Authorization": f"Bearer {llm_config.access_token}" if llm_config.access_token else "",
+            },
+        )
+        
+        # 创建浏览器（有头模式，用户需要看到扫码）
+        browser_config = BrowserConfig(headless=False)
+        browser = Browser(config=browser_config)
+        
+        agent = Agent(task=task, llm=llm, browser=browser)
         result = await agent.run()
 
         # 保存凭证
@@ -227,3 +291,6 @@ async def start_platform_login(platform: str) -> Dict[str, Any]:
             "success": False,
             "error": str(e),
         }
+    finally:
+        if browser:
+            await browser.close()
