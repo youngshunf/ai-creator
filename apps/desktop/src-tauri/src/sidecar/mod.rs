@@ -43,12 +43,16 @@ impl SidecarManager {
         let agent_core_src = format!("{}/packages/agent-core/src", sidecar_path);
         let python_path = format!("{}:{}", sidecar_src, agent_core_src);
 
+        // 获取当前环境配置
+        let app_env = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string());
+        
         let mut child = Command::new("uv")
             .arg("run")
             .arg("python")
             .arg("-m")
             .arg("sidecar.main")
             .env("PYTHONPATH", &python_path)
+            .env("AI_CREATOR_ENV", &app_env)  // 传递环境配置给 Sidecar
             .current_dir(sidecar_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

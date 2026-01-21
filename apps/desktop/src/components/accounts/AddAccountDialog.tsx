@@ -3,7 +3,7 @@
  * @author Ysf
  */
 import { useState, useRef } from "react";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, AlertTriangle } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   useAccountStore,
@@ -15,6 +15,13 @@ interface AddAccountDialogProps {
   open: boolean;
   onClose: () => void;
   projectId: string;
+}
+
+/**
+ * 校验 projectId 是否有效
+ */
+function isValidProjectId(projectId: string | undefined | null): boolean {
+  return !!projectId && projectId.trim().length > 0;
 }
 
 export function AddAccountDialog({
@@ -32,7 +39,49 @@ export function AddAccountDialog({
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const accountIdRef = useRef<string>("");
 
+  // 校验项目 ID
+  const hasValidProject = isValidProjectId(projectId);
+
   if (!open) return null;
+
+  // 如果没有有效的 projectId，显示警告
+  if (!hasValidProject) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+        <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md p-6">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          <div className="text-center py-4">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+              <AlertTriangle className="w-8 h-8 text-amber-600 dark:text-amber-400" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+              无法添加账号
+            </h2>
+            <p className="text-slate-600 dark:text-slate-300 mb-4">
+              请先创建或选择一个项目，然后再添加账号。
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              项目是组织账号和内容的基础单元。
+            </p>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-full mt-4 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg font-medium transition-colors"
+          >
+            我知道了
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const stopPolling = () => {
     if (pollingRef.current) {
@@ -42,10 +91,14 @@ export function AddAccountDialog({
   };
 
   const handleSelectPlatform = async (platform: PlatformInfo) => {
+    // 先更新 UI 状态
     setSelectedPlatform(platform);
     setStep("login");
     setIsLoading(true);
     setLoginStatus("正在打开登录页面...");
+
+    // 等待 UI 渲染完成后再打开浏览器，避免 UI 阻塞
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     try {
       // 调用 Tauri command 启动浏览器登录
@@ -110,15 +163,26 @@ export function AddAccountDialog({
               },
             );
 
-            // 2. 自动同步获取完整资料（昵称、粉丝、关注、作品数等）
-            setLoginStatus("正在同步账号资料...");
+            // 2. 关闭登录浏览器（登录成功后不再需要）
+            setLoginStatus("正在关闭登录窗口...");
             try {
-              await syncAccount(newAccount.id);
-              setLoginStatus("账号添加成功！资料已同步");
-            } catch (syncErr) {
-              console.warn("[LOGIN] 同步账号资料失败，使用基本信息:", syncErr);
-              setLoginStatus("账号添加成功！（资料同步失败）");
+              await invoke("close_login_browser", {
+                platform: platform.name,
+                accountId: accountIdRef.current,
+              });
+              console.log("[LOGIN] 登录浏览器已关闭");
+            } catch (closeErr) {
+              console.warn("[LOGIN] 关闭登录浏览器失败:", closeErr);
             }
+
+            // 3. 后台静默同步账号资料（不阻塞 UI）
+            setLoginStatus("账号添加成功！");
+            // 异步同步，不等待结果
+            syncAccount(newAccount.id).then(() => {
+              console.log("[LOGIN] 账号资料同步完成");
+            }).catch((syncErr) => {
+              console.warn("[LOGIN] 同步账号资料失败:", syncErr);
+            });
 
             setIsLoading(false);
             setTimeout(() => handleClose(), 800);

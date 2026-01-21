@@ -9,7 +9,7 @@ pub use repository::Repository;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 /// 数据库状态
 pub struct DbState(pub Mutex<Option<Repository>>);
@@ -25,10 +25,12 @@ impl DbState {
 }
 
 /// 获取数据库路径
-pub fn get_db_path(app: &AppHandle) -> PathBuf {
-    let app_data_dir = app.path().app_data_dir().expect("Failed to get app data dir");
-    std::fs::create_dir_all(&app_data_dir).expect("Failed to create app data dir");
-    app_data_dir.join("creatorflow.db")
+/// 开发环境使用 ~/.ai-creator/ 目录
+pub fn get_db_path(_app: &AppHandle) -> PathBuf {
+    let home_dir = std::env::var("HOME").expect("Failed to get HOME environment variable");
+    let data_dir = PathBuf::from(home_dir).join(".ai-creator");
+    std::fs::create_dir_all(&data_dir).expect("Failed to create .ai-creator dir");
+    data_dir.join("creatorflow.db")
 }
 
 /// 初始化数据库

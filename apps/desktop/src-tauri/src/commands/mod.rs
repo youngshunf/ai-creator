@@ -917,6 +917,15 @@ pub fn db_delete_project(id: String, state: State<DbState>) -> Result<String, St
     Ok("删除成功".to_string())
 }
 
+/// 设置本地默认项目（按用户维度唯一）
+#[tauri::command]
+pub fn db_set_default_project(user_id: String, project_id: String, state: State<DbState>) -> Result<String, String> {
+    let db = state.lock().map_err(|e| e.to_string())?;
+    let repo = db.as_ref().ok_or("数据库未初始化")?;
+    repo.set_default_project(&user_id, &project_id).map_err(|e| e.to_string())?;
+    Ok("设置成功".to_string())
+}
+
 /// 获取本地内容列表
 #[tauri::command]
 pub fn db_list_contents(project_id: String, state: State<DbState>) -> Result<serde_json::Value, String> {
@@ -1086,12 +1095,22 @@ pub fn db_update_account_profile(
     avatar_url: Option<String>,
     followers_count: i64,
     following_count: i64,
+    posts_count: i64,
+    metadata: Option<String>,
     state: State<DbState>,
 ) -> Result<String, String> {
     let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
-    repo.update_platform_account_profile(&id, account_name.as_deref(), avatar_url.as_deref(), followers_count, following_count)
-        .map_err(|e| e.to_string())?;
+    repo.update_platform_account_profile(
+        &id,
+        account_name.as_deref(),
+        avatar_url.as_deref(),
+        followers_count,
+        following_count,
+        posts_count,
+        metadata.as_deref(),
+    )
+    .map_err(|e| e.to_string())?;
     Ok("更新成功".to_string())
 }
 

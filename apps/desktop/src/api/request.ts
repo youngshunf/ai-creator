@@ -40,6 +40,62 @@ request.interceptors.request.use(
     }
 );
 
+/**
+ * 从错误响应中提取可读的错误消息
+ */
+function extractErrorMessage(error: AxiosError): string {
+    // 优先使用后端返回的 msg 字段
+    const responseData = error.response?.data as { code?: number; msg?: string; message?: string } | undefined;
+    
+    if (responseData?.msg) {
+        return responseData.msg;
+    }
+    
+    if (responseData?.message) {
+        return responseData.message;
+    }
+    
+    // 根据 HTTP 状态码提供友好的错误消息
+    const status = error.response?.status;
+    if (status) {
+        const statusMessages: Record<number, string> = {
+            400: '请求参数错误',
+            401: '登录已过期，请重新登录',
+            403: '没有权限访问',
+            404: '请求的资源不存在',
+            408: '请求超时',
+            500: '服务器内部错误',
+            502: '网关错误',
+            503: '服务暂不可用',
+            504: '网关超时',
+        };
+        return statusMessages[status] || `请求失败 (${status})`;
+    }
+    
+    // 网络错误
+    if (error.code === 'ECONNABORTED') {
+        return '请求超时，请检查网络连接';
+    }
+    
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        return '网络连接失败，请检查网络';
+    }
+    
+    return '请求失败，请稍后重试';
+}
+
+/**
+ * 创建带有友好消息的错误对象
+ */
+function createApiError(error: AxiosError): Error {
+    const message = extractErrorMessage(error);
+    const apiError = new Error(message);
+    // 保留原始错误信息供调试
+    (apiError as any).originalError = error;
+    (apiError as any).status = error.response?.status;
+    return apiError;
+}
+
 // 响应拦截器
 request.interceptors.response.use(
     (response: AxiosResponse) => {
@@ -56,14 +112,14 @@ request.interceptors.response.use(
             return data;
         }
 
-        // 其他错误
-        return Promise.reject(new Error(msg || 'Request failed'));
+        // 其他业务错误，使用后端返回的 msg
+        return Promise.reject(new Error(msg || '请求失败'));
     },
     async (error: AxiosError) => {
         const originalRequest = error.config;
 
         if (!originalRequest) {
-            return Promise.reject(error);
+            return Promise.reject(createApiError(error));
         }
 
         // 处理 401 未授权 (Token 过期)
@@ -106,13 +162,11 @@ request.interceptors.response.use(
             // 刷新失败，登出并跳转
             authStore.logout();
             window.location.reload(); // 重载页面以触发路由跳转到登录页
-            return Promise.reject(error);
+            return Promise.reject(createApiError(error));
         }
 
-        // 显示错误提示 (这里暂时用 console，后续可接 Toast)
-        // console.error('API Error:', error.message);
-
-        return Promise.reject(error);
+        // 其他错误：提取友好的错误消息
+        return Promise.reject(createApiError(error));
     }
 );
 

@@ -140,9 +140,10 @@ export const useAccountStore = create<AccountState>((set, get) => ({
     // 模拟网络延迟（可选，为了更好的 UI 体验）
     await new Promise((r) => setTimeout(r, 50));
     try {
-      const userId = useAuthStore.getState().user?.id || "current-user";
+      const authUser = useAuthStore.getState().user;
+      const effectiveUserId = authUser?.uuid ? String(authUser.uuid) : "current-user";
       const account = await invoke<PlatformAccount>("db_create_account", {
-        userId: String(userId),
+        userId: effectiveUserId,
         projectId,
         platform,
         accountId,
@@ -236,18 +237,51 @@ export const useAccountStore = create<AccountState>((set, get) => ({
       console.log("[syncAccount] 同步结果:", result);
 
       if (result.success && result.profile) {
-        // 映射后端字段到前端字段
+        // 映射后端字段到前端字段（兼容 Stagehand / Playwright 两种格式）
         const profile = result.profile;
+
+        const nickname = (profile.nickname as string) || account.account_name || null;
+        const avatarUrl = (profile.avatar_url as string) || account.avatar_url || null;
+
+        const rawFollowers =
+          (profile.followers_count as number | undefined) ??
+          (profile.followers as number | undefined);
+        const rawFollowing =
+          (profile.following_count as number | undefined) ??
+          (profile.following as number | undefined);
+        const rawPosts =
+          (profile.posts_count as number | undefined) ??
+          (profile.posts as number | undefined);
+        const rawLikes =
+          (profile.likes_count as number | undefined) ??
+          (profile.likes as number | undefined);
+        const rawFavorites =
+          (profile.favorites_count as number | undefined) ??
+          (profile.favorites as number | undefined) ??
+          (profile.collects as number | undefined);
+
+        const followers_count =
+          typeof rawFollowers === "number" ? rawFollowers : account.followers_count;
+        const following_count =
+          typeof rawFollowing === "number" ? rawFollowing : account.following_count;
+        const posts_count =
+          typeof rawPosts === "number" ? rawPosts : account.posts_count;
+
+        const extraStats: Record<string, unknown> = {};
+        if (typeof rawLikes === "number") extraStats.likes_count = rawLikes;
+        if (typeof rawFavorites === "number") extraStats.favorites_count = rawFavorites;
+        const metadataJson =
+          Object.keys(extraStats).length > 0 ? JSON.stringify(extraStats) : null;
+
         const updatedAccount = {
-          account_name: (profile.nickname as string) || account.account_name,
-          avatar_url: (profile.avatar_url as string) || account.avatar_url,
-          followers_count:
-            (profile.followers_count as number) ?? account.followers_count,
-          following_count:
-            (profile.following_count as number) ?? account.following_count,
+          account_name: nickname,
+          avatar_url: avatarUrl,
+          followers_count,
+          following_count,
+          posts_count,
         };
 
-        // 保存到本地数据库
+        // 保存到本地数据库（包括作品数和扩展统计）
         try {
           await invoke("db_update_account_profile", {
             id,
@@ -255,6 +289,8 @@ export const useAccountStore = create<AccountState>((set, get) => ({
             avatarUrl: updatedAccount.avatar_url,
             followersCount: updatedAccount.followers_count,
             followingCount: updatedAccount.following_count,
+            postsCount: updatedAccount.posts_count,
+            metadata: metadataJson,
           });
           console.log("[syncAccount] 已保存到本地数据库");
         } catch (dbErr) {

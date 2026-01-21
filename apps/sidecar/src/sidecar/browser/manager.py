@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from dataclasses import dataclass
 
-from .fingerprint import FingerprintGenerator, BrowserFingerprint
+from .fingerprint import FingerprintGenerator, BrowserFingerprint, asdict
 
 
 @dataclass
@@ -88,16 +88,33 @@ class BrowserSessionManager:
 
         await self.initialize()
 
-        # 生成指纹
-        fingerprint = self._fingerprint_gen.generate_for_account(account_id)
+        # 优先使用保存的真实指纹，否则生成随机指纹
+        fingerprint = self._load_saved_fingerprint(platform, account_id)
+        if fingerprint:
+            import logging
+            logging.getLogger(__name__).info(f"[BrowserManager] 使用保存的真实指纹: {platform}:{account_id}")
+        else:
+            fingerprint = self._fingerprint_gen.generate_for_account(account_id)
 
-        # 启动浏览器
+        # 启动浏览器 - 使用新版无头模式以规避检测
+        browser_args = [
+            "--disable-blink-features=AutomationControlled",
+            "--disable-dev-shm-usage",
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-infobars",
+            "--window-size=1920,1080",
+            "--start-maximized",
+            "--disable-extensions",
+        ]
+        
+        # 无头模式时使用新版 headless (Chrome 112+)
+        if self._headless:
+            browser_args.append("--headless=new")
+        
         browser = await self._playwright.chromium.launch(
-            headless=self._headless,
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--disable-dev-shm-usage",
-            ],
+            headless=False,  # 我们通过 args 控制 headless
+            args=browser_args,
         )
 
         # 创建上下文
@@ -117,8 +134,8 @@ class BrowserSessionManager:
 
         context = await browser.new_context(**context_options)
 
-        # 注入反检测脚本
-        await self._inject_stealth_scripts(context)
+        # 注入反检测脚本（使用真实指纹）
+        await self._inject_stealth_scripts(context, fingerprint)
 
         page = await context.new_page()
 
@@ -138,17 +155,22 @@ class BrowserSessionManager:
         self,
         platform: str,
         account_id: str,
+        save_fingerprint: bool = True,
     ) -> bool:
         """
-        保存会话凭证 - 同时保存 cookies 和 localStorage
+        保存会话凭证 - 同时保存 cookies、localStorage 和 浏览器指纹
 
         Args:
             platform: 平台名称
             account_id: 账号ID
+            save_fingerprint: 是否保存浏览器指纹（登录时应为 True）
 
         Returns:
             bool: 是否保存成功
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         session_key = f"{platform}:{account_id}"
         session = self._sessions.get(session_key)
 
@@ -165,6 +187,15 @@ class BrowserSessionManager:
 
             # 合并到 storage_state
             storage_state['localStorage'] = local_storage_data
+            
+            # 保存真实浏览器指纹（登录时采集）
+            if save_fingerprint:
+                try:
+                    real_fingerprint = await FingerprintGenerator.extract_from_page(session.page)
+                    storage_state['fingerprint'] = asdict(real_fingerprint)
+                    logger.info(f"[BrowserManager] 保存真实浏览器指纹: {platform}:{account_id}")
+                except Exception as e:
+                    logger.warning(f"[BrowserManager] 提取指纹失败: {e}")
 
             cred_dir = self._credentials_dir / platform
             cred_dir.mkdir(parents=True, exist_ok=True)
@@ -217,7 +248,7 @@ class BrowserSessionManager:
         platform: str,
         account_id: str,
     ) -> Optional[Dict[str, Any]]:
-        """加载存储状态（不包含 localStorage，需要单独注入）"""
+        """加载存储状态（不包含 localStorage 和 fingerprint，需要单独处理）"""
         cred_path = self._credentials_dir / platform / f"{account_id}_state.json"
 
         if not cred_path.exists():
@@ -229,9 +260,28 @@ class BrowserSessionManager:
                 # 移除 localStorage，因为 Playwright 不支持直接加载
                 # localStorage 需要在页面加载后通过 JS 注入
                 self._pending_local_storage = data.pop('localStorage', None)
+                # 保存 fingerprint 供后续使用
+                self._pending_fingerprint = data.pop('fingerprint', None)
                 return data
         except Exception:
             return None
+    
+    def _load_saved_fingerprint(self, platform: str, account_id: str) -> Optional[BrowserFingerprint]:
+        """加载保存的真实浏览器指纹"""
+        cred_path = self._credentials_dir / platform / f"{account_id}_state.json"
+        
+        if not cred_path.exists():
+            return None
+        
+        try:
+            with open(cred_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                fp_data = data.get('fingerprint')
+                if fp_data:
+                    return FingerprintGenerator.from_dict(fp_data)
+        except Exception:
+            pass
+        return None
 
     async def inject_local_storage(self, page, platform: str, account_id: str):
         """注入 localStorage 到页面"""
@@ -255,28 +305,180 @@ class BrowserSessionManager:
         except Exception:
             pass
 
-    async def _inject_stealth_scripts(self, context):
-        """注入反检测脚本"""
-        await context.add_init_script("""
-            // 隐藏 webdriver 属性
-            Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined
-            });
+    async def _inject_stealth_scripts(self, context, fingerprint: BrowserFingerprint):
+        """注入完整的反检测脚本，使用真实指纹信息"""
+        # 构建指纹配置
+        fp_config = json.dumps({
+            'platform': fingerprint.platform,
+            'vendor': fingerprint.vendor,
+            'languages': fingerprint.languages,
+            'hardwareConcurrency': fingerprint.hardware_concurrency,
+            'deviceMemory': fingerprint.device_memory,
+            'screenWidth': fingerprint.screen_width,
+            'screenHeight': fingerprint.screen_height,
+            'colorDepth': fingerprint.color_depth,
+            'pixelRatio': fingerprint.pixel_ratio,
+            'webglVendor': fingerprint.webgl_vendor,
+            'webglRenderer': fingerprint.webgl_renderer,
+        })
+        
+        await context.add_init_script(f"""
+            // 加载真实指纹配置
+            const FP_CONFIG = {fp_config};
+            
+            // ========== 1. 隐藏 webdriver 属性 ==========
+            Object.defineProperty(navigator, 'webdriver', {{
+                get: () => undefined,
+                configurable: true
+            }});
+            
+            // ========== 2. 修改 navigator.plugins ==========
+            const makePluginArray = () => {{
+                const plugins = [
+                    {{ name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }},
+                    {{ name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai', description: '' }},
+                    {{ name: 'Native Client', filename: 'internal-nacl-plugin', description: '' }}
+                ];
+                const pluginArray = Object.create(PluginArray.prototype);
+                plugins.forEach((p, i) => {{
+                    const plugin = Object.create(Plugin.prototype, {{
+                        name: {{ value: p.name }},
+                        filename: {{ value: p.filename }},
+                        description: {{ value: p.description }},
+                        length: {{ value: 1 }}
+                    }});
+                    pluginArray[i] = plugin;
+                    pluginArray[p.name] = plugin;
+                }});
+                Object.defineProperty(pluginArray, 'length', {{ value: plugins.length }});
+                return pluginArray;
+            }};
+            Object.defineProperty(navigator, 'plugins', {{
+                get: () => makePluginArray(),
+                configurable: true
+            }});
 
-            // 修改 plugins
-            Object.defineProperty(navigator, 'plugins', {
-                get: () => [1, 2, 3, 4, 5]
-            });
+            // ========== 3. 修改 languages (使用真实值) ==========
+            Object.defineProperty(navigator, 'languages', {{
+                get: () => FP_CONFIG.languages,
+                configurable: true
+            }});
 
-            // 修改 languages
-            Object.defineProperty(navigator, 'languages', {
-                get: () => ['zh-CN', 'zh', 'en']
-            });
-
-            // 隐藏自动化相关属性
+            // ========== 4. 隐藏 Chrome 自动化标记 ==========
             delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
             delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
             delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
+            
+            // ========== 5. 修改 chrome 对象 ==========
+            window.chrome = {{
+                runtime: {{
+                    onConnect: {{ addListener: () => {{}} }},
+                    onMessage: {{ addListener: () => {{}} }}
+                }},
+                loadTimes: () => ({{}}),
+                csi: () => ({{}}),
+                app: {{ isInstalled: false }}
+            }};
+
+            // ========== 6. 修改 Permissions API ==========
+            const originalQuery = window.navigator.permissions?.query;
+            if (originalQuery) {{
+                window.navigator.permissions.query = (parameters) => (
+                    parameters.name === 'notifications' ?
+                        Promise.resolve({{ state: Notification.permission }}) :
+                        originalQuery(parameters)
+                );
+            }}
+
+            // ========== 7. 修改 WebGL 指纹 (使用真实值) ==========
+            const getParameterProxyHandler = {{
+                apply: function(target, thisArg, argumentsList) {{
+                    const param = argumentsList[0];
+                    // UNMASKED_VENDOR_WEBGL
+                    if (param === 37445) {{
+                        return FP_CONFIG.webglVendor;
+                    }}
+                    // UNMASKED_RENDERER_WEBGL
+                    if (param === 37446) {{
+                        return FP_CONFIG.webglRenderer;
+                    }}
+                    return Reflect.apply(target, thisArg, argumentsList);
+                }}
+            }};
+            try {{
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (gl) {{
+                    const proto = Object.getPrototypeOf(gl);
+                    proto.getParameter = new Proxy(proto.getParameter, getParameterProxyHandler);
+                }}
+            }} catch (e) {{}}
+
+            // ========== 8. 修改 navigator.connection ==========
+            Object.defineProperty(navigator, 'connection', {{
+                get: () => ({{
+                    effectiveType: '4g',
+                    rtt: 50,
+                    downlink: 10,
+                    saveData: false
+                }}),
+                configurable: true
+            }});
+
+            // ========== 9. 修改 navigator.hardwareConcurrency (使用真实值) ==========
+            Object.defineProperty(navigator, 'hardwareConcurrency', {{
+                get: () => FP_CONFIG.hardwareConcurrency,
+                configurable: true
+            }});
+
+            // ========== 10. 修改 navigator.deviceMemory (使用真实值) ==========
+            Object.defineProperty(navigator, 'deviceMemory', {{
+                get: () => FP_CONFIG.deviceMemory,
+                configurable: true
+            }});
+
+            // ========== 11. 模拟真实的 console ==========
+            const nativeConsole = window.console;
+            window.console = {{
+                ...nativeConsole,
+                debug: nativeConsole.debug.bind(nativeConsole)
+            }};
+
+            // ========== 12. 隐藏 Headless 特征 (使用真实值) ==========
+            Object.defineProperty(navigator, 'platform', {{
+                get: () => FP_CONFIG.platform,
+                configurable: true
+            }});
+            
+            Object.defineProperty(navigator, 'vendor', {{
+                get: () => FP_CONFIG.vendor,
+                configurable: true
+            }});
+            
+            // ========== 13. 修改 screen 属性 (使用真实值) ==========
+            Object.defineProperty(window.screen, 'width', {{
+                get: () => FP_CONFIG.screenWidth,
+                configurable: true
+            }});
+            Object.defineProperty(window.screen, 'height', {{
+                get: () => FP_CONFIG.screenHeight,
+                configurable: true
+            }});
+            Object.defineProperty(window.screen, 'colorDepth', {{
+                get: () => FP_CONFIG.colorDepth,
+                configurable: true
+            }});
+            Object.defineProperty(window, 'devicePixelRatio', {{
+                get: () => FP_CONFIG.pixelRatio,
+                configurable: true
+            }});
+            
+            // ========== 14. 防止通过 iframe 检测 ==========
+            Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {{
+                get: function() {{
+                    return window;
+                }}
+            }});
         """)
 
     def __del__(self):

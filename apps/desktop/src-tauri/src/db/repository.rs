@@ -288,6 +288,22 @@ impl Repository {
         Ok(projects)
     }
 
+    /// 设置用户的默认项目（保证同一用户仅有一个默认项目）
+    pub fn set_default_project(&self, user_id: &str, project_id: &str) -> SqliteResult<()> {
+        let now = now();
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE projects
+             SET is_default = CASE WHEN id = ?1 THEN 1 ELSE 0 END,
+                 sync_status = 'pending',
+                 local_version = local_version + 1,
+                 updated_at = ?2
+             WHERE user_id = ?3 AND is_deleted = 0",
+            params![project_id, now, user_id],
+        )?;
+        Ok(())
+    }
+
     /// 删除项目（软删除）
     pub fn delete_project(&self, id: &str) -> SqliteResult<()> {
         let now = now();
@@ -518,12 +534,33 @@ impl Repository {
         avatar_url: Option<&str>,
         followers_count: i64,
         following_count: i64,
+        posts_count: i64,
+        metadata: Option<&str>,
     ) -> SqliteResult<()> {
         let now = now();
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "UPDATE platform_accounts SET account_name = ?1, avatar_url = ?2, followers_count = ?3, following_count = ?4, last_profile_sync_at = ?5, updated_at = ?6 WHERE id = ?7",
-            params![account_name, avatar_url, followers_count, following_count, now, now, id],
+            "UPDATE platform_accounts SET
+                 account_name = ?1,
+                 avatar_url = ?2,
+                 followers_count = ?3,
+                 following_count = ?4,
+                 posts_count = ?5,
+                 metadata = ?6,
+                 last_profile_sync_at = ?7,
+                 updated_at = ?8
+             WHERE id = ?9",
+            params![
+                account_name,
+                avatar_url,
+                followers_count,
+                following_count,
+                posts_count,
+                metadata,
+                now,
+                now,
+                id
+            ],
         )?;
         Ok(())
     }

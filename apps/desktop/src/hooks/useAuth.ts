@@ -40,7 +40,7 @@ export function useAuth() {
         email: resp.user.email || null,
         username: resp.user.username || null,
         nickname: resp.user.nickname || null,
-        avatarUrl: resp.user.avatar || null,
+        avatar: resp.user.avatar || null,
       });
       console.log('[Auth] User synced to local database');
     } catch (err) {
@@ -62,6 +62,18 @@ export function useAuth() {
       console.log('[Auth] Tokens synced to sidecar');
     } catch (err) {
       console.warn('[Auth] Failed to sync tokens to sidecar:', err);
+    }
+
+    // 登录后启动云端同步（项目 & 平台账号）
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('start_sync', {
+        userId: resp.user.uuid,
+        token: resp.access_token,
+      });
+      console.log('[Auth] Background sync started');
+    } catch (err) {
+      console.warn('[Auth] Failed to start sync engine:', err);
     }
   }, [setAuth]);
 

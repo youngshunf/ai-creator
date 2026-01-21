@@ -96,8 +96,14 @@ class XiaohongshuAdapter(PlatformAdapter):
             # 导航到正确的个人主页 URL
             profile_url = f"https://www.xiaohongshu.com/user/profile/{platform_user_id}"
             logger.info(f"[XHS] 导航到: {profile_url}")
-            await page.goto(profile_url, wait_until="networkidle", timeout=15000)
-            await page.wait_for_timeout(3000)
+            await page.goto(profile_url, wait_until="networkidle", timeout=30000)
+            
+            # 等待关键元素出现（用户信息区域）
+            try:
+                await page.wait_for_selector('.user-info, .info-part, [class*="user-name"], [class*="nickname"]', timeout=10000)
+            except Exception:
+                logger.warning("[XHS] 等待用户信息元素超时，继续尝试提取")
+            await page.wait_for_timeout(2000)
 
             # 调试：截图保存
             import os
@@ -118,9 +124,9 @@ class XiaohongshuAdapter(PlatformAdapter):
                 return main.innerHTML.substring(0, 3000);
             }""")
             logger.info(f"[XHS] 页面 HTML 片段: {debug_html[:500]}...")
-
             # 提取用户信息 - 使用更通用的选择器
-            profile_data = await page.evaluate("""() => {
+            profile_data = await page.evaluate("""
+            () => {
                 // 尝试多种选择器获取昵称
                 const getName = () => {
                     // 小红书个人主页的昵称选择器
@@ -161,27 +167,32 @@ class XiaohongshuAdapter(PlatformAdapter):
 
                 // 获取数字统计
                 const getStats = () => {
-                    const stats = { followers: null, following: null, likes: null };
-                    // 查找所有包含数字的元素
+                    const stats = { 
+                        followers: null, 
+                        following: null, 
+                        likes: null, 
+                        posts: null,
+                        collects: null 
+                    };
                     const allText = document.body.innerText;
 
-                    // 匹配 "123 粉丝" 或 "粉丝 123" 格式
-                    const patterns = [
-                        /([\\d.]+[万kKmM]?)\\s*粉丝/,
-                        /粉丝\\s*([\\d.]+[万kKmM]?)/,
-                        /([\\d.]+[万kKmM]?)\\s*关注/,
-                        /关注\\s*([\\d.]+[万kKmM]?)/,
-                        /([\\d.]+[万kKmM]?)\\s*获赞/,
-                        /获赞[与和收藏]*\\s*([\\d.]+[万kKmM]?)/
-                    ];
-
+                    // 粉丝数
                     const followersMatch = allText.match(/([\\d.]+[万kKmM]?)\\s*粉丝/) || allText.match(/粉丝\\s*([\\d.]+[万kKmM]?)/);
+                    // 关注数
                     const followingMatch = allText.match(/([\\d.]+[万kKmM]?)\\s*关注/) || allText.match(/关注\\s*([\\d.]+[万kKmM]?)/);
-                    const likesMatch = allText.match(/([\\d.]+[万kKmM]?)\\s*获赞/) || allText.match(/获赞[与和收藏]*\\s*([\\d.]+[万kKmM]?)/);
+                    // 获赞与收藏数
+                    const likesMatch = allText.match(/获赞[与和收藏]*\\s*([\\d.]+[万kKmM]?)/) || allText.match(/([\\d.]+[万kKmM]?)\\s*获赞/);
+                    // 笔记/作品数 - 小红书个人主页通常显示"笔记"或"作品"
+                    const postsMatch = allText.match(/([\\d.]+[万kKmM]?)\\s*笔记/) || allText.match(/笔记\\s*([\\d.]+[万kKmM]?)/) ||
+                                       allText.match(/([\\d.]+[万kKmM]?)\\s*作品/) || allText.match(/作品\\s*([\\d.]+[万kKmM]?)/);
+                    // 收藏数
+                    const collectsMatch = allText.match(/([\\d.]+[万kKmM]?)\\s*收藏/) || allText.match(/收藏\\s*([\\d.]+[万kKmM]?)/);
 
                     if (followersMatch) stats.followers = followersMatch[1];
                     if (followingMatch) stats.following = followingMatch[1];
                     if (likesMatch) stats.likes = likesMatch[1];
+                    if (postsMatch) stats.posts = postsMatch[1];
+                    if (collectsMatch) stats.collects = collectsMatch[1];
 
                     return stats;
                 };
@@ -192,7 +203,9 @@ class XiaohongshuAdapter(PlatformAdapter):
                     avatar: getAvatar(),
                     followers: stats.followers,
                     following: stats.following,
-                    likes: stats.likes
+                    likes: stats.likes,
+                    posts: stats.posts,
+                    collects: stats.collects
                 };
             }""")
 
@@ -217,7 +230,11 @@ class XiaohongshuAdapter(PlatformAdapter):
                 avatar_url=profile_data.get("avatar"),
                 followers_count=parse_count(profile_data.get("followers")),
                 following_count=parse_count(profile_data.get("following")),
+                posts_count=parse_count(profile_data.get("posts")),
                 likes_count=parse_count(profile_data.get("likes")),
+                extra={
+                    "collects_count": parse_count(profile_data.get("collects")),
+                },
             )
         except Exception:
             return None

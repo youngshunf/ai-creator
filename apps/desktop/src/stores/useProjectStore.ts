@@ -134,11 +134,11 @@ export const useProjectStore = create<ProjectState>()(
       fetchProjects: async (retryCount = 0) => {
         set({ isLoading: true, error: null });
         try {
-          // 获取当前用户ID
+          // 获取当前用户ID（优先使用 uuid，保持与本地 SQLite 一致）
           const userStore = useAuthStore.getState();
           // 如果用户未登录，使用默认ID (为了离线支持)
-          const effectiveUserId = userStore.user?.id
-            ? String(userStore.user.id)
+          const effectiveUserId = userStore.user?.uuid
+            ? String(userStore.user.uuid)
             : "current-user";
 
           console.log(
@@ -151,9 +151,10 @@ export const useProjectStore = create<ProjectState>()(
 
           // 转换并更新状态
           const projects = rawProjects.map(mapRawToProject);
+          const defaultProject = projects.find((p) => p.is_default);
           set({
             projects,
-            currentProject: projects.length > 0 ? projects[0] : null,
+            currentProject: defaultProject || projects[0] || null,
             isLoading: false,
           });
         } catch (error) {
@@ -180,8 +181,8 @@ export const useProjectStore = create<ProjectState>()(
       createProject: async (data: ProjectCreate) => {
         set({ isLoading: true, error: null });
         try {
-          const userId = useAuthStore.getState().user?.id;
-          const effectiveUserId = userId ? String(userId) : "current-user";
+          const user = useAuthStore.getState().user;
+          const effectiveUserId = user?.uuid ? String(user.uuid) : "current-user";
 
           const rawProject = await invoke<RawProject>("db_create_project", {
             userId: effectiveUserId,
@@ -281,16 +282,44 @@ export const useProjectStore = create<ProjectState>()(
       },
 
       setDefaultProject: async (id: string) => {
-        // TODO: Implement db_set_default_project in Rust if needed,
-        // or just update is_default locally and sync.
-        // For MVP, simple local toggle is fine if backend supports it,
-        // but we only have db_update_project (assumed).
-        // Let's assume updateProject handles it.
-        const { updateProject } = get();
-        // Reset others to false? Usually handled by backend logic.
-        // Here we just update the target one.
-        // Ideally, backend handles "only one default".
-        console.warn("setDefaultProject not fully implemented locally");
+        try {
+          const auth = useAuthStore.getState();
+          const effectiveUserId = auth.user?.uuid
+            ? String(auth.user.uuid)
+            : "current-user";
+
+          // 调用本地命令，保证同一用户只有一个默认项目
+          await invoke("db_set_default_project", {
+            userId: effectiveUserId,
+            projectId: id,
+          });
+
+          // 本地状态更新：仅一个默认项目
+          set((state) => {
+            const updatedProjects = state.projects.map((p) => ({
+              ...p,
+              is_default: p.id === id,
+            }));
+            const newCurrent =
+              state.currentProject && state.currentProject.id === id
+                ? { ...state.currentProject, is_default: true }
+                : updatedProjects.find((p) => p.id === id) || state.currentProject;
+
+            return {
+              projects: updatedProjects,
+              currentProject: newCurrent,
+            };
+          });
+
+          // 尝试将默认项目状态同步到云端（失败不影响本地使用）
+          const target = get().projects.find((p) => p.id === id);
+          if (target) {
+            get().syncProjectToCloud({ ...target, is_default: true });
+          }
+        } catch (error) {
+          console.error("[ProjectStore] Failed to set default project:", error);
+          set({ error: String(error) });
+        }
       },
 
       clearError: () => set({ error: null }),

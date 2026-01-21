@@ -16,7 +16,10 @@ export interface CloudPlatformAccount {
   posts_count?: number;
   is_active?: boolean;
   session_valid?: boolean;
-  metadata?: Record<string, unknown>;
+  /**
+   * 云端使用的扩展元数据字段（例如 likes_count, favorites_count 等）
+   */
+  metadata_info?: Record<string, unknown>;
 }
 
 // 获取项目下的平台账号列表

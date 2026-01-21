@@ -67,6 +67,7 @@ pub fn run() {
             commands::db_list_projects,
             commands::db_create_project,
             commands::db_delete_project,
+            commands::db_set_default_project,
             commands::db_list_contents,
             commands::db_create_content,
             commands::db_update_content,
