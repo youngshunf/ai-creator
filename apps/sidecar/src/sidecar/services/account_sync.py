@@ -293,28 +293,49 @@ class AccountSyncService:
             )
             
             # 执行
-            result = await agent.run()
+            history = await agent.run()
+            # 获取最后一次的输出结果
+            result = history.final_result()
             result_str = str(result)
+            
+            logger.info(f"[SYNC] browser-use AI 返回: {result_str}")
             
             # 尝试解析 JSON 结果
             import re
-            json_match = re.search(r'\{[^{}]*"nickname"[^{}]*\}', result_str)
+            # 匹配最外层的 JSON 对象，尽可能宽松以应对 AI 输出
+            json_match = re.search(r'\{.*"nickname".*\}', result_str, re.DOTALL)
             if json_match:
-                profile_data = json.loads(json_match.group())
-                logger.info(f"[SYNC] browser-use 同步成功: {platform}:{account_id}")
-                return SyncResult(
-                    success=True,
-                    platform=platform,
-                    account_id=account_id,
-                    profile=profile_data,
-                    strategy="browser-use"
-                )
-            else:
-                return SyncResult(
-                    success=False, platform=platform, account_id=account_id,
-                    error=f"无法解析 AI 返回结果: {result_str[:200]}",
-                    strategy="browser-use"
-                )
+                try:
+                    profile_data = json.loads(json_match.group())
+                    logger.info(f"[SYNC] browser-use 同步成功: {platform}:{account_id}")
+                    return SyncResult(
+                        success=True,
+                        platform=platform,
+                        account_id=account_id,
+                        profile=profile_data,
+                        strategy="browser-use"
+                    )
+                except json.JSONDecodeError:
+                    logger.warning("[SYNC] JSON 解析失败，尝试修复")
+                    # 简单的修复尝试，例如替换单引号
+                    try:
+                         fixed_json = json_match.group().replace("'", '"')
+                         profile_data = json.loads(fixed_json)
+                         return SyncResult(
+                            success=True,
+                            platform=platform,
+                            account_id=account_id,
+                            profile=profile_data,
+                            strategy="browser-use"
+                        )
+                    except:
+                        pass
+
+            return SyncResult(
+                success=False, platform=platform, account_id=account_id,
+                error=f"无法解析 AI 返回结果: {result_str[:200]}",
+                strategy="browser-use"
+            )
                 
         except Exception as e:
             logger.error(f"[SYNC] browser-use 同步失败: {e}")

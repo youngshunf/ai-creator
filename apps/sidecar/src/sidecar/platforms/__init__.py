@@ -7,12 +7,14 @@ from .base import PlatformAdapter, AdaptedContent, ContentSpec, LoginResult, Use
 from .xiaohongshu import XiaohongshuAdapter
 from .wechat import WechatAdapter
 from .douyin import DouyinAdapter
+from .bilibili import BilibiliAdapter
 
 # 平台适配器注册表
 PLATFORM_ADAPTERS: dict[str, type[PlatformAdapter]] = {
     "xiaohongshu": XiaohongshuAdapter,
     "wechat": WechatAdapter,
     "douyin": DouyinAdapter,
+    "bilibili": BilibiliAdapter,
 }
 
 
@@ -33,6 +35,7 @@ __all__ = [
     "XiaohongshuAdapter",
     "WechatAdapter",
     "DouyinAdapter",
+    "BilibiliAdapter",
     "get_adapter",
     "PLATFORM_ADAPTERS",
 ]

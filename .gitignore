@@ -91,3 +91,5 @@ Desktop.ini
 # Rust build artifacts
 **/target/
 
+apps/desktop/demo
+debug_screenshots
