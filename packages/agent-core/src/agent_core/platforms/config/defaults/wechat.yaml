@@ -1,0 +1,92 @@
+# 微信公众号平台配置
+# @author Ysf
+# @date 2026-01-22
+
+platform:
+  name: wechat
+  display_name: 微信公众号
+  type: wechat
+  icon: wechat.svg
+
+urls:
+  home: https://mp.weixin.qq.com
+  login: https://mp.weixin.qq.com/
+  creator: https://mp.weixin.qq.com/
+  publish: https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=item&isNew=1&type=10&create_type=10
+  profile_template: null
+
+constraints:
+  title:
+    max_length: 64
+    min_length: 1
+    required: true
+  content:
+    max_length: 20000
+    min_length: 10
+    required: true
+  images:
+    max_count: 20
+    min_count: 0
+    max_size_mb: 10
+    formats:
+      - jpg
+      - jpeg
+      - png
+      - gif
+    aspect_ratio: null
+  video:
+    max_count: 1
+    max_duration: 1800
+    max_size_mb: 200
+    formats:
+      - mp4
+  hashtags:
+    max_count: 3
+    format: "#{tag}#"
+  mentions:
+    max_count: 0
+    supported: false
+  features:
+    allow_external_links: false
+    allow_internal_links: true
+    location_supported: false
+    schedule_supported: true
+    draft_supported: true
+  supported_formats:
+    - text
+    - image
+    - video
+
+selectors:
+  login_check: ".weui-desktop-account__nickname, .mp-head-nickname, .user_name"
+  publish_btn: 'a:has-text("写文章"), a:has-text("新建图文")'
+  upload_image: 'input[type="file"][accept*="image"]'
+  upload_video: 'input[type="file"][accept*="video"]'
+  title_input: "#title"
+  content_input: "#ueditor_0, .edui-body-container"
+  tag_input: null
+  submit_btn: '#js_submit, button:has-text("保存")'
+  success_indicator: "text=保存成功"
+  extra:
+    author_input: "#author"
+    cover_upload: 'input[name="filetype"]'
+    publish_confirm: 'button:has-text("群发")'
+
+login_detection:
+  cookie_keys:
+    - uuid
+    - ticket
+    - slave_user
+  local_storage_keys: []
+  url_patterns:
+    logged_in: []
+    logged_out:
+      - /login
+  user_id_extraction:
+    - type: cookie
+      key: slave_user
+    - type: url_pattern
+      pattern: "token=(\\w+)"
+
+version: "1.0"
+updated_at: "2026-01-22"

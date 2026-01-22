@@ -35,28 +35,44 @@ class AccountSyncService:
     账号同步服务 - 静默获取用户资料
     
     优先使用 Playwright + 平台适配器，失败后降级到 browser-use AI。
+    URL 配置现在从平台适配器加载（agent-core YAML 配置）。
     """
-
-    # 平台主站 URL 映射（用于加载 cookies）
-    PLATFORM_URLS = {
-        "xiaohongshu": "https://www.xiaohongshu.com",
-        "douyin": "https://www.douyin.com",
-        "bilibili": "https://www.bilibili.com",
-        "weibo": "https://weibo.com",
-        "kuaishou": "https://www.kuaishou.com",
-    }
-    
-    # 用户主页 URL 模板
-    PROFILE_URL_TEMPLATES = {
-        "xiaohongshu": "https://www.xiaohongshu.com/user/profile/{user_id}",
-        "douyin": "https://www.douyin.com/user/{user_id}",
-        "bilibili": "https://space.bilibili.com/{user_id}",
-        "weibo": "https://weibo.com/u/{user_id}",
-        "kuaishou": "https://www.kuaishou.com/profile/{user_id}",
-    }
 
     def __init__(self, credentials_dir: str = None):
         self._credentials_dir = credentials_dir
+    
+    def _get_platform_url(self, platform: str) -> str:
+        """从适配器获取平台主站 URL"""
+        try:
+            adapter = get_adapter(platform)
+            return adapter.get_url("home")
+        except Exception:
+            # 降级：硬编码备用
+            fallback = {
+                "xiaohongshu": "https://www.xiaohongshu.com",
+                "douyin": "https://www.douyin.com",
+                "bilibili": "https://www.bilibili.com",
+                "weibo": "https://weibo.com",
+                "kuaishou": "https://www.kuaishou.com",
+            }
+            return fallback.get(platform, "")
+    
+    def _get_profile_url(self, platform: str, user_id: str) -> str:
+        """从适配器获取用户主页 URL"""
+        try:
+            adapter = get_adapter(platform)
+            return adapter.get_profile_url(user_id)
+        except Exception:
+            # 降级：硬编码备用
+            fallback_templates = {
+                "xiaohongshu": "https://www.xiaohongshu.com/user/profile/{user_id}",
+                "douyin": "https://www.douyin.com/user/{user_id}",
+                "bilibili": "https://space.bilibili.com/{user_id}",
+                "weibo": "https://weibo.com/u/{user_id}",
+                "kuaishou": "https://www.kuaishou.com/profile/{user_id}",
+            }
+            template = fallback_templates.get(platform, "")
+            return template.format(user_id=user_id) if template else ""
 
     async def sync_account(
         self, 
@@ -241,14 +257,13 @@ class AccountSyncService:
                 logger.warning(f"[SYNC] 加载凭证失败: {e}")
         
         # 获取用户主页 URL
-        profile_url_template = self.PROFILE_URL_TEMPLATES.get(platform)
-        if not profile_url_template:
+        profile_url = self._get_profile_url(platform, account_id)
+        if not profile_url:
             return SyncResult(
                 success=False, platform=platform, account_id=account_id,
                 error=f"不支持的平台: {platform}",
                 strategy="browser-use"
             )
-        profile_url = profile_url_template.format(user_id=account_id)
         
         # 构建 LLM
         base_url = f"{llm_config.base_url}/api/v1/llm/proxy/v1"

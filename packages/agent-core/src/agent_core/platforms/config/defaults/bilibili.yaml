@@ -1,0 +1,94 @@
+# B站 (哔哩哔哩) 平台配置
+# @author Ysf
+# @date 2026-01-22
+
+platform:
+  name: bilibili
+  display_name: 哔哩哔哩
+  type: bilibili
+  icon: bilibili.svg
+
+urls:
+  home: https://www.bilibili.com
+  login: https://passport.bilibili.com/login
+  creator: https://member.bilibili.com/platform/home
+  publish: https://member.bilibili.com/platform/upload/video/frame
+  profile_template: https://space.bilibili.com/{user_id}
+
+constraints:
+  title:
+    max_length: 80
+    min_length: 1
+    required: true
+  content:
+    max_length: 2000
+    min_length: 0
+    required: false
+  images:
+    max_count: 0
+    min_count: 0
+    max_size_mb: 20
+    formats:
+      - jpg
+      - jpeg
+      - png
+    aspect_ratio: null
+  video:
+    max_count: 1
+    max_duration: 36000 # 10 小时
+    max_size_mb: 8192
+    formats:
+      - mp4
+      - flv
+      - avi
+      - mov
+      - wmv
+      - mkv
+  hashtags:
+    max_count: 10
+    format: "#{tag}"
+  mentions:
+    max_count: 0
+    supported: false
+  features:
+    allow_external_links: false
+    allow_internal_links: true
+    location_supported: false
+    schedule_supported: true
+    draft_supported: true
+  supported_formats:
+    - video
+
+selectors:
+  login_check: '.h-name, .header-entry-mini, div[class*="user-info"]'
+  publish_btn: 'div[class*="upload"], button:has-text("上传视频")'
+  upload_image: null
+  upload_video: 'input[type="file"][accept*="video"], input[type="file"]'
+  title_input: 'input[placeholder*="标题"], .video-title input'
+  content_input: 'textarea[placeholder*="简介"], .video-desc textarea'
+  tag_input: 'input[placeholder*="标签"], .tag-input input'
+  submit_btn: 'span:has-text("立即投稿"), div:has-text("立即投稿")'
+  success_indicator: "text=投稿成功"
+  extra:
+    category_select: ".select-item-cont, .type-check-item"
+    cover_upload: 'input[accept*="image"]'
+
+login_detection:
+  cookie_keys:
+    - SESSDATA
+    - bili_jct
+    - DedeUserID
+  local_storage_keys: []
+  url_patterns:
+    logged_in:
+      - member.bilibili.com
+    logged_out: []
+  user_id_extraction:
+    - type: cookie
+      key: DedeUserID
+    - type: dom
+      selector: ".h-user-id"
+      pattern: "space.bilibili.com/(\\d+)"
+
+version: "1.0"
+updated_at: "2026-01-22"

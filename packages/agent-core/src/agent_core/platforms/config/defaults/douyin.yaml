@@ -1,0 +1,95 @@
+# 抖音平台配置
+# @author Ysf
+# @date 2026-01-22
+
+platform:
+  name: douyin
+  display_name: 抖音
+  type: douyin
+  icon: douyin.svg
+
+urls:
+  home: https://www.douyin.com
+  login: https://creator.douyin.com/
+  creator: https://creator.douyin.com/creator-micro/home
+  publish: https://creator.douyin.com/creator-micro/content/upload
+  profile_template: https://www.douyin.com/user/{user_id}
+
+constraints:
+  title:
+    max_length: 55
+    min_length: 0
+    required: false
+  content:
+    max_length: 2200
+    min_length: 0
+    required: false
+  images:
+    max_count: 35
+    min_count: 0
+    max_size_mb: 20
+    formats:
+      - jpg
+      - jpeg
+      - png
+      - webp
+    aspect_ratio: null
+  video:
+    max_count: 1
+    max_duration: 900
+    max_size_mb: 4096
+    formats:
+      - mp4
+      - mov
+      - avi
+  hashtags:
+    max_count: 5
+    format: "#{tag}"
+  mentions:
+    max_count: 10
+    supported: true
+  features:
+    allow_external_links: false
+    allow_internal_links: true
+    location_supported: true
+    schedule_supported: true
+    draft_supported: true
+  supported_formats:
+    - text
+    - image
+    - video
+
+selectors:
+  login_check: 'div[class*="creator"], div[class*="user-info"]'
+  publish_btn: 'div[class*="upload-btn"], div:has-text("点击上传")'
+  upload_image: 'input[type="file"][accept*="image"]'
+  upload_video: 'input[type="file"][accept*="video"], input[type="file"]'
+  title_input: 'input[placeholder*="标题"], input[placeholder*="作品标题"]'
+  content_input: 'div[contenteditable="true"], textarea[placeholder*="描述"]'
+  tag_input: 'input[placeholder*="话题"]'
+  submit_btn: 'button:has-text("发布"), div:has-text("发布"):not([disabled])'
+  success_indicator: "text=发布成功"
+  extra:
+    cover_select: 'div[class*="cover"]'
+    category_select: 'div[class*="category"]'
+
+login_detection:
+  cookie_keys:
+    - sessionid_ss
+    - LOGIN_STATUS
+  local_storage_keys: []
+  url_patterns:
+    logged_in:
+      - /creator-micro
+    logged_out: []
+  user_id_extraction:
+    - type: cookie
+      key: LOGIN_STATUS
+    - type: local_storage_key_prefix
+      pattern: "__tea_cache_tokens_"
+    - type: local_storage
+      key: SLARDARdouyin_creator_longvideo
+      pattern: "userId"
+
+version: "1.0"
+updated_at: "2026-01-22"

@@ -1,0 +1,92 @@
+# 微博平台配置
+# @author Ysf
+# @date 2026-01-22
+
+platform:
+  name: weibo
+  display_name: 微博
+  type: weibo
+  icon: weibo.svg
+
+urls:
+  home: https://weibo.com
+  login: https://weibo.com/login
+  creator: https://weibo.com
+  publish: https://weibo.com
+  profile_template: https://weibo.com/u/{user_id}
+
+constraints:
+  title:
+    max_length: 0 # 微博没有独立标题
+    min_length: 0
+    required: false
+  content:
+    max_length: 2000
+    min_length: 1
+    required: true
+  images:
+    max_count: 9
+    min_count: 0
+    max_size_mb: 20
+    formats:
+      - jpg
+      - jpeg
+      - png
+      - gif
+    aspect_ratio: null
+  video:
+    max_count: 1
+    max_duration: 300
+    max_size_mb: 500
+    formats:
+      - mp4
+  hashtags:
+    max_count: 10
+    format: "#{tag}#" # 微博话题格式: #话题#
+  mentions:
+    max_count: 20
+    supported: true
+  features:
+    allow_external_links: true
+    allow_internal_links: true
+    location_supported: true
+    schedule_supported: true
+    draft_supported: true
+  supported_formats:
+    - text
+    - image
+    - video
+
+selectors:
+  login_check: 'div[class*="gn_name"], a[class*="S_txt1"], div[class*="user-info"]'
+  publish_btn: 'div[class*="W_input"], textarea[class*="W_input"]'
+  upload_image: 'input[type="file"][accept*="image"]'
+  upload_video: 'input[type="file"][accept*="video"]'
+  title_input: null
+  content_input: 'textarea[class*="W_input"], div[contenteditable="true"]'
+  tag_input: 'input[placeholder*="话题"]'
+  submit_btn: 'button:has-text("发布"), a[class*="W_btn_a"]'
+  success_indicator: 'div:has-text("发布成功"), div[class*="success"]'
+  extra:
+    topic_btn: 'a[title="插入话题"], span:has-text("#")'
+    emoji_btn: 'a[title="表情"]'
+    location_btn: 'a[title="所在位置"]'
+
+login_detection:
+  cookie_keys:
+    - SUB
+    - SUBP
+    - SSOLoginState
+  local_storage_keys: []
+  url_patterns:
+    logged_in: []
+    logged_out:
+      - /login
+  user_id_extraction:
+    - type: cookie
+      key: uid
+    - type: url_pattern
+      pattern: "weibo.com/u/(\\d+)"
+
+version: "1.0"
+updated_at: "2026-01-22"

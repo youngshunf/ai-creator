@@ -8,10 +8,13 @@ import asyncio
 from typing import Dict, Any, Optional, List
 
 from .browser.manager import BrowserSessionManager
-from .platforms.base import PublishResult, AdaptedContent
-from .platforms.xiaohongshu import XiaohongshuAdapter
-# from .platforms.douyin import DouyinAdapter
-# from .platforms.wechat import WechatAdapter
+from .platforms import (
+    PublishResult, 
+    AdaptedContent, 
+    XiaohongshuAdapter,
+    # DouyinAdapter,
+    # WechatAdapter,
+)
 
 logger = logging.getLogger(__name__)
 

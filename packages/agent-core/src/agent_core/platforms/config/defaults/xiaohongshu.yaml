@@ -1,0 +1,95 @@
+# 小红书平台配置
+# @author Ysf
+# @date 2026-01-22
+
+platform:
+  name: xiaohongshu
+  display_name: 小红书
+  type: xiaohongshu
+  icon: xiaohongshu.svg
+
+urls:
+  home: https://www.xiaohongshu.com
+  login: https://www.xiaohongshu.com/login
+  creator: https://creator.xiaohongshu.com
+  publish: https://creator.xiaohongshu.com/publish/publish?source=official
+  profile_template: https://www.xiaohongshu.com/user/profile/{user_id}
+
+constraints:
+  title:
+    max_length: 20
+    min_length: 0
+    required: false
+  content:
+    max_length: 1000
+    min_length: 5
+    required: true
+  images:
+    max_count: 18
+    min_count: 0
+    max_size_mb: 20
+    formats:
+      - jpg
+      - jpeg
+      - png
+      - webp
+    aspect_ratio: "3:4"
+  video:
+    max_count: 1
+    max_duration: 300
+    max_size_mb: 500
+    formats:
+      - mp4
+      - mov
+  hashtags:
+    max_count: 10
+    format: "#{tag}"
+  mentions:
+    max_count: 10
+    supported: true
+  features:
+    allow_external_links: false
+    allow_internal_links: true
+    location_supported: true
+    schedule_supported: true
+    draft_supported: true
+  supported_formats:
+    - text
+    - image
+    - video
+
+selectors:
+  login_check: 'div[class*="user-info"], div[class*="creator-info"]'
+  publish_btn: 'div[class*="publish-btn"], button:has-text("发布笔记")'
+  upload_image: 'input[type="file"][accept*="image"], input[type="file"]'
+  upload_video: 'input[type="file"][accept*="video"]'
+  title_input: 'input[placeholder*="标题"]'
+  content_input: '.ql-editor, div[class*="content"] div[contenteditable="true"], textarea[placeholder*="正文"]'
+  tag_input: 'input[placeholder*="话题"]'
+  submit_btn: 'button.publish-btn, button:has-text("发布")'
+  success_indicator: "text=发布成功"
+  extra:
+    cover_select: '.cover-selector, div[class*="cover"]'
+
+login_detection:
+  cookie_keys:
+    - customerClientId
+    - web_session
+  local_storage_keys:
+    - USER_INFO
+    - USER_INFO_FOR_BIZ
+  url_patterns:
+    logged_in: []
+    logged_out:
+      - /login
+  user_id_extraction:
+    - type: local_storage_key_prefix
+      pattern: "xhs-pc-search-history-"
+    - type: local_storage
+      key: USER_INFO
+      pattern: "user_id"
+    - type: cookie
+      key: customerClientId
+
+version: "1.0"
+updated_at: "2026-01-22"
