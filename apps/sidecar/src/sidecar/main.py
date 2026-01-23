@@ -16,6 +16,9 @@ from dataclasses import dataclass, asdict
 
 from agent_core.runtime.interfaces import ExecutionRequest
 from agent_core.llm import LLMConfigManager, CloudLLMClient
+from agent_core.topic_recommender import TopicRecommender
+from agent_core.topic_recommender.analyzers.llm_topic_card import LLMTopicCardAnalyzer
+from agent_core.topic_recommender.providers.trendradar import TrendRadarProvider
 
 from .executor import LocalExecutor
 from .browser.manager import BrowserSessionManager
@@ -102,6 +105,8 @@ class SidecarServer:
             "sync_credential": self._handle_sync_credential,
             "sync_all_credentials": self._handle_sync_all_credentials,
             "pull_credential": self._handle_pull_credential,
+            # 选题推荐
+            "topic_generate": self._handle_topic_generate,
         }
 
     async def start(self):
@@ -218,6 +223,68 @@ class SidecarServer:
                 "credential_store": True,
             },
         }
+
+    async def _handle_topic_generate(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        生成项目私有选题（端侧）
+
+        Args:
+            params:
+                - industry_name: str
+                - keywords: list[str]
+                - platforms: list[str] | None
+                - count: int
+                - hot_limit: int
+                - trendradar_base_url: str
+                - trendradar_endpoint_path: str
+                - trendradar_payload_mode: str
+                - trendradar_api_key: str
+
+        Returns:
+            dict: {"topics": [TopicCard, ...]}
+        """
+
+        if not self.llm_client:
+            raise RuntimeError("LLM 客户端未初始化，请先登录并完成 LLM 配置")
+
+        industry_name = str(params.get("industry_name") or "")
+        keywords = params.get("keywords") or []
+        if not isinstance(keywords, list):
+            keywords = []
+
+        platforms = params.get("platforms")
+        if platforms is not None and not isinstance(platforms, list):
+            platforms = None
+
+        count = int(params.get("count") or 10)
+        hot_limit = int(params.get("hot_limit") or 50)
+
+        base_url = str(params.get("trendradar_base_url") or "").strip()
+        if not base_url:
+            raise RuntimeError("trendradar_base_url 不能为空")
+
+        endpoint_path = str(params.get("trendradar_endpoint_path") or "/api/hot-topics")
+        payload_mode = str(params.get("trendradar_payload_mode") or "trendradar")
+        api_key = str(params.get("trendradar_api_key") or "")
+
+        provider = TrendRadarProvider(
+            base_url=base_url,
+            endpoint_path=endpoint_path,
+            payload_mode=payload_mode,
+            api_key=api_key,
+        )
+        analyzer = LLMTopicCardAnalyzer(client=self.llm_client)
+        recommender = TopicRecommender(provider=provider, analyzer=analyzer)
+
+        cards = await recommender.run(
+            industry_name=industry_name,
+            keywords=keywords,
+            platforms=platforms,
+            hot_limit=hot_limit,
+            count=count,
+        )
+
+        return {"topics": [c.model_dump() for c in cards]}
 
     async def _handle_execute_graph(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """执行 Graph"""

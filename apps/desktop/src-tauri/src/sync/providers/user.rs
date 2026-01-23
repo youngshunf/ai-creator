@@ -7,7 +7,7 @@ pub struct UserProvider;
 
 #[derive(Deserialize)]
 struct ApiUser {
-    id: i64,
+    id: String,
     username: String,
     nickname: String,
     email: Option<String>,
@@ -32,14 +32,14 @@ impl SyncProvider for UserProvider {
         let user = resp.data;
         
         // 确保 ID 匹配 (虽然理论上 token 决定了 user，但作为校验)
-        if user.id.to_string() != user_id {
+        if user.id != user_id {
             eprintln!("[UserProvider] Warning: API user ID {} does not match requested ID {}", user.id, user_id);
         }
 
         // 同步到本地数据库
         // 这将执行 UPSERT 操作，确保用户存在且信息最新
         repo.sync_user(
-            &user.id.to_string(),
+            &user.id,
             user.email.as_deref(),
             Some(&user.username),
             Some(&user.nickname),

@@ -36,7 +36,6 @@ impl ToString for SyncStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     pub id: String,
-    pub uuid: Option<String>,
     pub email: Option<String>,
     pub phone: Option<String>,
     pub username: Option<String>,
@@ -100,6 +99,27 @@ pub struct PlatformAccount {
     pub posts_count: i64,
     pub metadata: Option<String>,
     pub last_profile_sync_at: Option<i64>,
+    pub is_deleted: bool,
+    pub deleted_at: Option<i64>,
+    pub synced_at: Option<i64>,
+    pub server_version: i64,
+    pub local_version: i64,
+    pub sync_status: String,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+/// 项目私有选题
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectTopic {
+    pub id: String,
+    pub user_id: String,
+    pub project_id: String,
+    pub title: String,
+    pub payload: String,
+    pub batch_date: Option<String>,
+    pub source_uid: Option<String>,
+    pub status: i64,
     pub is_deleted: bool,
     pub deleted_at: Option<i64>,
     pub synced_at: Option<i64>,

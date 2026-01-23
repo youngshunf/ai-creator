@@ -11,10 +11,8 @@ pub struct AccountProvider;
 /// 云端返回的平台账号信息
 #[derive(Debug, Deserialize)]
 struct ApiAccount {
-    // id: i64, // 数据库自增ID
-    // uuid: String, // 账号 UUID
-    project_id: i64, // 云端项目 ID (int)
-    project_uuid: String, // 项目 UUID
+    id: String,
+    project_id: String,
     platform: String,
     account_id: String,
     account_name: Option<String>,
@@ -25,6 +23,8 @@ struct ApiAccount {
     is_active: Option<bool>,
     session_valid: Option<bool>,
     metadata_info: Option<serde_json::Value>,
+    is_deleted: Option<bool>,
+    server_version: Option<i64>,
 }
 
 #[async_trait]
@@ -52,31 +52,29 @@ impl SyncProvider for AccountProvider {
         eprintln!("[AccountProvider] Received {} accounts from cloud", resp.data.len());
         
         for acc in resp.data {
-            eprintln!("[AccountProvider] Processing account: {} ({}) for project_uuid: {}", 
-                acc.account_id, acc.platform, acc.project_uuid);
+            eprintln!("[AccountProvider] Processing account: {} ({}) for project_id: {}", 
+                acc.account_id, acc.platform, acc.project_id);
 
             // 确保项目存在
-            repo.ensure_project_exists(&acc.project_uuid, user_id).map_err(|e| e.to_string())?;
+            repo.ensure_project_exists(&acc.project_id, user_id).map_err(|e| e.to_string())?;
 
-            // 创建或更新账号
-            let local_account = repo.create_platform_account(
+            let metadata_str = acc.metadata_info.map(|v| v.to_string());
+            repo.sync_platform_account(
+                &acc.id,
                 user_id,
-                &acc.project_uuid,
+                &acc.project_id,
                 &acc.platform,
                 &acc.account_id,
-                acc.account_name.as_deref()
-            ).map_err(|e| e.to_string())?;
-            
-            // 更新账号资料（包括扩展字段）
-            let metadata_str = acc.metadata_info.map(|v| v.to_string());
-            let _ = repo.update_platform_account_profile(
-                &local_account.id,
                 acc.account_name.as_deref(),
                 acc.avatar_url.as_deref(),
                 acc.followers_count.unwrap_or(0),
                 acc.following_count.unwrap_or(0),
                 acc.posts_count.unwrap_or(0),
+                acc.is_active.unwrap_or(true),
+                acc.session_valid.unwrap_or(false),
                 metadata_str.as_deref(),
+                acc.is_deleted.unwrap_or(false),
+                acc.server_version.unwrap_or(0),
             ).map_err(|e| e.to_string())?;
             
             eprintln!("[AccountProvider] Successfully synced account: {} with profile", acc.account_id);
@@ -85,9 +83,54 @@ impl SyncProvider for AccountProvider {
         Ok(())
     }
 
-    async fn push(&self, _client: &ApiClient, _repo: &Repository, _user_id: &str, _token: &str) -> Result<(), String> {
-        // 账号通常不在本地创建，而是在 Sidecar 登录后同步
-        // 但如果有资料更新（如备注名），可以 Push
+    async fn push(&self, client: &ApiClient, repo: &Repository, user_id: &str, token: &str) -> Result<(), String> {
+        #[derive(Deserialize)]
+        struct ApiAccountResponse {
+            id: String,
+            server_version: i64,
+        }
+
+        #[derive(Deserialize)]
+        struct ApiResponse {
+            data: ApiAccountResponse,
+        }
+
+        let accounts = repo
+            .list_pending_platform_accounts(user_id)
+            .map_err(|e| e.to_string())?;
+
+        for acc in accounts {
+            let path = format!("/projects/{}/accounts/sync", acc.project_id);
+            let metadata = acc
+                .metadata
+                .as_ref()
+                .and_then(|v| serde_json::from_str::<serde_json::Value>(v).ok())
+                .unwrap_or_else(|| serde_json::json!({}));
+            let body = serde_json::json!({
+                "id": acc.id,
+                "project_id": acc.project_id,
+                "platform": acc.platform,
+                "account_id": acc.account_id,
+                "account_name": acc.account_name,
+                "avatar_url": acc.avatar_url,
+                "followers_count": acc.followers_count,
+                "following_count": acc.following_count,
+                "posts_count": acc.posts_count,
+                "is_active": acc.is_active,
+                "session_valid": acc.session_valid,
+                "metadata_info": metadata,
+                "is_deleted": acc.is_deleted,
+            });
+
+            let resp: ApiResponse = client.post(&path, &body, Some(token)).await?;
+            if resp.data.id != acc.id {
+                return Err("Platform account sync failed: id mismatch".to_string());
+            }
+            repo
+                .mark_platform_account_synced(&acc.id, resp.data.server_version)
+                .map_err(|e| e.to_string())?;
+        }
+
         Ok(())
     }
 }

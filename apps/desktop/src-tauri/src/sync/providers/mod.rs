@@ -1,10 +1,12 @@
 //! 同步提供者 Trait 定义
 
 pub mod account;
+pub mod project_topic;
 pub mod project;
 pub mod user;
 
 pub use account::AccountProvider;
+pub use project_topic::ProjectTopicProvider;
 pub use project::ProjectProvider;
 pub use user::UserProvider;
 

@@ -1018,6 +1018,109 @@ pub fn db_update_publication_status(id: String, status: String, error_message: O
     Ok("更新成功".to_string())
 }
 
+/// 为项目生成私有选题并写入本地 project_topics（标记 pending，供同步）
+#[tauri::command]
+pub fn generate_project_topics(
+    project_id: String,
+    trendradar_base_url: String,
+    trendradar_endpoint_path: Option<String>,
+    trendradar_payload_mode: Option<String>,
+    state: State<DbState>,
+    sidecar: State<SidecarState>,
+) -> Result<serde_json::Value, String> {
+    let db = state.lock().map_err(|e| e.to_string())?;
+    let repo = db.as_ref().ok_or("数据库未初始化")?;
+    let project = repo
+        .get_project(&project_id)
+        .map_err(|e| e.to_string())?
+        .ok_or("项目不存在")?;
+
+    let mut keywords: Vec<String> = Vec::new();
+    if let Some(industry) = project.industry.clone() {
+        if !industry.trim().is_empty() {
+            keywords.push(industry);
+        }
+    }
+
+    for field in [project.keywords.as_deref(), project.topics.as_deref()] {
+        if let Some(s) = field {
+            if let Ok(arr) = serde_json::from_str::<Vec<String>>(s) {
+                for k in arr {
+                    if !k.trim().is_empty() {
+                        keywords.push(k);
+                    }
+                }
+            }
+        }
+    }
+
+    keywords.sort();
+    keywords.dedup();
+
+    let industry_name = project.industry.clone().unwrap_or_default();
+    let mut manager = sidecar.lock().map_err(|e| e.to_string())?;
+    let result = manager
+        .call(
+            "topic_generate",
+            serde_json::json!({
+                "industry_name": industry_name,
+                "keywords": keywords,
+                "count": 10,
+                "hot_limit": 50,
+                "trendradar_base_url": trendradar_base_url,
+                "trendradar_endpoint_path": trendradar_endpoint_path.unwrap_or("/api/hot-topics".to_string()),
+                "trendradar_payload_mode": trendradar_payload_mode.unwrap_or("trendradar".to_string())
+            }),
+        )
+        .map_err(|e| e.to_string())?;
+
+    let topics = result
+        .get("topics")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let batch_date = chrono::Utc::now().date_naive().to_string();
+    let mut saved = Vec::new();
+    for item in topics {
+        let title = item
+            .get("title")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        if title.trim().is_empty() {
+            continue;
+        }
+
+        let source_uid = item
+            .get("source_uid")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| {
+                let raw = format!("{}:{}:{}", project_id, batch_date, title);
+                raw.chars().take(120).collect::<String>()
+            });
+
+        let payload = serde_json::to_string(&item).unwrap_or_else(|_| "{}".to_string());
+        let status = item.get("status").and_then(|v| v.as_i64()).unwrap_or(0);
+
+        let topic = repo
+            .create_project_topic(
+                &project.user_id,
+                &project_id,
+                &title,
+                &payload,
+                Some(&batch_date),
+                Some(&source_uid),
+                status,
+            )
+            .map_err(|e| e.to_string())?;
+        saved.push(topic);
+    }
+
+    Ok(serde_json::to_value(saved).unwrap())
+}
+
 /// 同步用户信息到本地数据库
 #[tauri::command]
 pub fn sync_user_to_local(user_id: String, email: Option<String>, username: Option<String>, nickname: Option<String>, avatar: Option<String>, state: State<DbState>) -> Result<String, String> {
@@ -1032,7 +1135,7 @@ pub fn sync_user_to_local(user_id: String, email: Option<String>, username: Opti
 pub fn sync_project_to_local(project_id: String, user_id: String, name: String, description: Option<String>, state: State<DbState>) -> Result<String, String> {
     let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
-    repo.sync_project(&project_id, &user_id, &name, description.as_deref(), None).map_err(|e| e.to_string())?;
+    repo.sync_project(&project_id, &user_id, &name, description.as_deref()).map_err(|e| e.to_string())?;
     Ok("项目同步成功".to_string())
 }
 

@@ -55,6 +55,14 @@ from .llm import (
     LLMConfigManager,
 )
 
+from .topic_recommender import (
+    HotTopic,
+    TopicCard,
+    TopicRecommender,
+    HotTopicProvider,
+    TopicAnalyzer,
+)
+
 __all__ = [
     # 版本
     "__version__",
@@ -87,4 +95,10 @@ __all__ = [
     "CloudLLMClient",
     "DirectLLMClient",
     "LLMConfigManager",
+    # Topic recommender
+    "HotTopic",
+    "TopicCard",
+    "TopicRecommender",
+    "HotTopicProvider",
+    "TopicAnalyzer",
 ]

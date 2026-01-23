@@ -12,11 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TopicsIndexRouteImport } from './routes/topics/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as PublishIndexRouteImport } from './routes/publish/index'
 import { Route as CreationIndexRouteImport } from './routes/creation/index'
 import { Route as SettingsProjectRouteImport } from './routes/settings/project'
 import { Route as ProjectCreateRouteImport } from './routes/project.create'
+import { Route as TopicsPublicIdRouteImport } from './routes/topics/public/$id'
+import { Route as TopicsPrivateUuidRouteImport } from './routes/topics/private/$uuid'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -31,6 +34,11 @@ const AccountsRoute = AccountsRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TopicsIndexRoute = TopicsIndexRouteImport.update({
+  id: '/topics/',
+  path: '/topics/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsIndexRoute = SettingsIndexRouteImport.update({
@@ -58,6 +66,16 @@ const ProjectCreateRoute = ProjectCreateRouteImport.update({
   path: '/project/create',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TopicsPublicIdRoute = TopicsPublicIdRouteImport.update({
+  id: '/topics/public/$id',
+  path: '/topics/public/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TopicsPrivateUuidRoute = TopicsPrivateUuidRouteImport.update({
+  id: '/topics/private/$uuid',
+  path: '/topics/private/$uuid',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -68,6 +86,9 @@ export interface FileRoutesByFullPath {
   '/creation': typeof CreationIndexRoute
   '/publish': typeof PublishIndexRoute
   '/settings': typeof SettingsIndexRoute
+  '/topics': typeof TopicsIndexRoute
+  '/topics/private/$uuid': typeof TopicsPrivateUuidRoute
+  '/topics/public/$id': typeof TopicsPublicIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,6 +99,9 @@ export interface FileRoutesByTo {
   '/creation': typeof CreationIndexRoute
   '/publish': typeof PublishIndexRoute
   '/settings': typeof SettingsIndexRoute
+  '/topics': typeof TopicsIndexRoute
+  '/topics/private/$uuid': typeof TopicsPrivateUuidRoute
+  '/topics/public/$id': typeof TopicsPublicIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +113,9 @@ export interface FileRoutesById {
   '/creation/': typeof CreationIndexRoute
   '/publish/': typeof PublishIndexRoute
   '/settings/': typeof SettingsIndexRoute
+  '/topics/': typeof TopicsIndexRoute
+  '/topics/private/$uuid': typeof TopicsPrivateUuidRoute
+  '/topics/public/$id': typeof TopicsPublicIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +128,9 @@ export interface FileRouteTypes {
     | '/creation'
     | '/publish'
     | '/settings'
+    | '/topics'
+    | '/topics/private/$uuid'
+    | '/topics/public/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +141,9 @@ export interface FileRouteTypes {
     | '/creation'
     | '/publish'
     | '/settings'
+    | '/topics'
+    | '/topics/private/$uuid'
+    | '/topics/public/$id'
   id:
     | '__root__'
     | '/'
@@ -121,6 +154,9 @@ export interface FileRouteTypes {
     | '/creation/'
     | '/publish/'
     | '/settings/'
+    | '/topics/'
+    | '/topics/private/$uuid'
+    | '/topics/public/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -132,6 +168,9 @@ export interface RootRouteChildren {
   CreationIndexRoute: typeof CreationIndexRoute
   PublishIndexRoute: typeof PublishIndexRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
+  TopicsIndexRoute: typeof TopicsIndexRoute
+  TopicsPrivateUuidRoute: typeof TopicsPrivateUuidRoute
+  TopicsPublicIdRoute: typeof TopicsPublicIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -155,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/topics/': {
+      id: '/topics/'
+      path: '/topics'
+      fullPath: '/topics'
+      preLoaderRoute: typeof TopicsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/': {
@@ -192,6 +238,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectCreateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/topics/public/$id': {
+      id: '/topics/public/$id'
+      path: '/topics/public/$id'
+      fullPath: '/topics/public/$id'
+      preLoaderRoute: typeof TopicsPublicIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/topics/private/$uuid': {
+      id: '/topics/private/$uuid'
+      path: '/topics/private/$uuid'
+      fullPath: '/topics/private/$uuid'
+      preLoaderRoute: typeof TopicsPrivateUuidRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -204,6 +264,9 @@ const rootRouteChildren: RootRouteChildren = {
   CreationIndexRoute: CreationIndexRoute,
   PublishIndexRoute: PublishIndexRoute,
   SettingsIndexRoute: SettingsIndexRoute,
+  TopicsIndexRoute: TopicsIndexRoute,
+  TopicsPrivateUuidRoute: TopicsPrivateUuidRoute,
+  TopicsPublicIdRoute: TopicsPublicIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

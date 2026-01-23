@@ -1,7 +1,7 @@
 //! 数据库操作层
 //! @author Ysf
 
-use rusqlite::{params, Connection, Result as SqliteResult};
+use rusqlite::{params, Connection, OptionalExtension, Result as SqliteResult};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -43,12 +43,7 @@ impl Repository {
         {
             let conn = self.conn.lock().unwrap();
             conn.execute_batch(schema)?;
-            
-            // 尝试添加 cloud_id 列 (如果不存在)
-            // 这是一个简单的迁移策略，适用于开发阶段
-            let _ = conn.execute("ALTER TABLE projects ADD COLUMN cloud_id INTEGER", []);
         }
-        // 移除了 run_migrations，开发阶段直接修改 schema.sql
         self.ensure_default_user()?;
         Ok(())
     }
@@ -111,33 +106,20 @@ impl Repository {
     }
 
     /// 同步云端项目到本地（选择项目时调用）
-    pub fn sync_project(&self, project_id: &str, user_id: &str, name: &str, description: Option<&str>, cloud_id: Option<i64>) -> SqliteResult<()> {
+    pub fn sync_project(&self, project_id: &str, user_id: &str, name: &str, description: Option<&str>) -> SqliteResult<()> {
         let ts = now();
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "INSERT INTO projects (id, user_id, name, description, sync_status, created_at, updated_at, cloud_id)
-             VALUES (?1, ?2, ?3, ?4, 'synced', ?5, ?5, ?6)
+            "INSERT INTO projects (id, user_id, name, description, sync_status, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, 'synced', ?5, ?5)
              ON CONFLICT(id) DO UPDATE SET
                 name=excluded.name,
                 description=COALESCE(excluded.description, description),
                 sync_status='synced',
-                updated_at=excluded.updated_at,
-                cloud_id=COALESCE(excluded.cloud_id, cloud_id)",
-            params![project_id, user_id, name, description, ts, cloud_id],
+                updated_at=excluded.updated_at",
+            params![project_id, user_id, name, description, ts],
         )?;
         Ok(())
-    }
-
-    /// 通过 Cloud ID 获取项目 UUID
-    pub fn get_project_uuid_by_cloud_id(&self, cloud_id: i64) -> SqliteResult<Option<String>> {
-        let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare("SELECT id FROM projects WHERE cloud_id = ?1 LIMIT 1")?;
-        let mut rows = stmt.query(params![cloud_id])?;
-        if let Some(row) = rows.next()? {
-            Ok(Some(row.get(0)?))
-        } else {
-            Ok(None)
-        }
     }
 
     // ============ 用户操作 ============
@@ -146,17 +128,17 @@ impl Repository {
     pub fn save_user(&self, user: &User) -> SqliteResult<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "INSERT INTO users (id, uuid, email, phone, username, nickname, avatar, status, is_superuser, is_staff, subscription_tier, settings, synced_at, server_version, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)
+            "INSERT INTO users (id, email, phone, username, nickname, avatar, status, is_superuser, is_staff, subscription_tier, settings, synced_at, server_version, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
              ON CONFLICT(id) DO UPDATE SET
-                uuid=excluded.uuid, email=excluded.email, phone=excluded.phone,
+                email=excluded.email, phone=excluded.phone,
                 username=excluded.username, nickname=excluded.nickname, avatar=excluded.avatar,
                 status=excluded.status, is_superuser=excluded.is_superuser, is_staff=excluded.is_staff,
                 subscription_tier=excluded.subscription_tier, settings=excluded.settings,
                 synced_at=excluded.synced_at, server_version=excluded.server_version,
                 updated_at=excluded.updated_at",
             params![
-                user.id, user.uuid, user.email, user.phone, user.username, user.nickname, user.avatar,
+                user.id, user.email, user.phone, user.username, user.nickname, user.avatar,
                 user.status, user.is_superuser, user.is_staff, user.subscription_tier, user.settings,
                 user.synced_at, user.server_version, user.created_at, user.updated_at
             ],
@@ -179,7 +161,6 @@ impl Repository {
     fn row_to_user(&self, row: &rusqlite::Row) -> SqliteResult<User> {
         Ok(User {
             id: row.get("id")?,
-            uuid: row.get("uuid").unwrap_or(None),
             email: row.get("email")?,
             phone: row.get("phone").unwrap_or(None),
             username: row.get("username")?,
@@ -288,6 +269,29 @@ impl Repository {
         Ok(projects)
     }
 
+    pub fn list_pending_projects(&self, user_id: &str) -> SqliteResult<Vec<Project>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT * FROM projects WHERE user_id = ?1 AND sync_status = 'pending' ORDER BY updated_at ASC",
+        )?;
+        let mut rows = stmt.query(params![user_id])?;
+        let mut projects = Vec::new();
+        while let Some(row) = rows.next()? {
+            projects.push(self.row_to_project(row)?);
+        }
+        Ok(projects)
+    }
+
+    pub fn mark_project_synced(&self, id: &str) -> SqliteResult<()> {
+        let now = now();
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE projects SET sync_status = 'synced', synced_at = ?1, updated_at = ?2 WHERE id = ?3",
+            params![now, now, id],
+        )?;
+        Ok(())
+    }
+
     /// 设置用户的默认项目（保证同一用户仅有一个默认项目）
     pub fn set_default_project(&self, user_id: &str, project_id: &str) -> SqliteResult<()> {
         let now = now();
@@ -317,30 +321,30 @@ impl Repository {
 
     fn row_to_project(&self, row: &rusqlite::Row) -> SqliteResult<Project> {
         Ok(Project {
-            id: row.get(0)?,
-            user_id: row.get(1)?,
-            name: row.get(2)?,
-            description: row.get(3)?,
-            industry: row.get(4)?,
-            sub_industries: row.get(5)?,
-            brand_name: row.get(6)?,
-            brand_tone: row.get(7)?,
-            brand_keywords: row.get(8)?,
-            topics: row.get(9)?,
-            keywords: row.get(10)?,
-            account_tags: row.get(11)?,
-            preferred_platforms: row.get(12)?,
-            content_style: row.get(13)?,
-            settings: row.get(14)?,
-            is_default: row.get::<_, i32>(15)? != 0,
-            is_deleted: row.get::<_, i32>(16)? != 0,
-            deleted_at: row.get(17)?,
-            synced_at: row.get(18)?,
-            server_version: row.get(19)?,
-            local_version: row.get(20)?,
-            sync_status: row.get(21)?,
-            created_at: row.get(22)?,
-            updated_at: row.get(23)?,
+            id: row.get("id")?,
+            user_id: row.get("user_id")?,
+            name: row.get("name")?,
+            description: row.get("description")?,
+            industry: row.get("industry")?,
+            sub_industries: row.get("sub_industries")?,
+            brand_name: row.get("brand_name")?,
+            brand_tone: row.get("brand_tone")?,
+            brand_keywords: row.get("brand_keywords")?,
+            topics: row.get("topics")?,
+            keywords: row.get("keywords")?,
+            account_tags: row.get("account_tags")?,
+            preferred_platforms: row.get("preferred_platforms")?,
+            content_style: row.get("content_style")?,
+            settings: row.get("settings")?,
+            is_default: row.get::<_, i32>("is_default")? != 0,
+            is_deleted: row.get::<_, i32>("is_deleted")? != 0,
+            deleted_at: row.get("deleted_at")?,
+            synced_at: row.get("synced_at")?,
+            server_version: row.get("server_version")?,
+            local_version: row.get("local_version")?,
+            sync_status: row.get("sync_status")?,
+            created_at: row.get("created_at")?,
+            updated_at: row.get("updated_at")?,
         })
     }
 
@@ -498,6 +502,100 @@ impl Repository {
         Ok(accounts)
     }
 
+    pub fn list_pending_platform_accounts(&self, user_id: &str) -> SqliteResult<Vec<PlatformAccount>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT * FROM platform_accounts WHERE user_id = ?1 AND sync_status = 'pending' ORDER BY updated_at ASC",
+        )?;
+        let mut rows = stmt.query(params![user_id])?;
+        let mut accounts = Vec::new();
+        while let Some(row) = rows.next()? {
+            accounts.push(self.row_to_platform_account(row)?);
+        }
+        Ok(accounts)
+    }
+
+    pub fn sync_platform_account(
+        &self,
+        id: &str,
+        user_id: &str,
+        project_id: &str,
+        platform: &str,
+        account_id: &str,
+        account_name: Option<&str>,
+        avatar_url: Option<&str>,
+        followers_count: i64,
+        following_count: i64,
+        posts_count: i64,
+        is_active: bool,
+        session_valid: bool,
+        metadata: Option<&str>,
+        is_deleted: bool,
+        server_version: i64,
+    ) -> SqliteResult<()> {
+        let now = now();
+        let conn = self.conn.lock().unwrap();
+        let existing_id = conn
+            .query_row(
+                "SELECT id FROM platform_accounts WHERE project_id = ?1 AND platform = ?2 AND account_id = ?3",
+                params![project_id, platform, account_id],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?;
+        if let Some(existing_id) = existing_id {
+            if existing_id != id {
+                conn.execute(
+                    "UPDATE publications SET account_id = ?1 WHERE account_id = ?2",
+                    params![id, existing_id],
+                )?;
+                conn.execute(
+                    "UPDATE platform_accounts SET id = ?1 WHERE id = ?2",
+                    params![id, existing_id],
+                )?;
+            }
+        }
+        conn.execute(
+            "INSERT INTO platform_accounts (id, user_id, project_id, platform, account_id, account_name, avatar_url, followers_count, following_count, posts_count, is_active, session_valid, metadata, is_deleted, server_version, sync_status, synced_at, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, 'synced', ?16, ?17, ?18)
+             ON CONFLICT(id) DO UPDATE SET
+                project_id = excluded.project_id,
+                account_name = excluded.account_name,
+                avatar_url = excluded.avatar_url,
+                followers_count = excluded.followers_count,
+                following_count = excluded.following_count,
+                posts_count = excluded.posts_count,
+                is_active = excluded.is_active,
+                session_valid = excluded.session_valid,
+                metadata = excluded.metadata,
+                is_deleted = excluded.is_deleted,
+                server_version = excluded.server_version,
+                sync_status = 'synced',
+                synced_at = excluded.synced_at,
+                updated_at = excluded.updated_at",
+            params![
+                id,
+                user_id,
+                project_id,
+                platform,
+                account_id,
+                account_name,
+                avatar_url,
+                followers_count,
+                following_count,
+                posts_count,
+                is_active,
+                session_valid,
+                metadata,
+                is_deleted,
+                server_version,
+                now,
+                now,
+                now
+            ],
+        )?;
+        Ok(())
+    }
+
     fn row_to_platform_account(&self, row: &rusqlite::Row) -> SqliteResult<PlatformAccount> {
         Ok(PlatformAccount {
             id: row.get("id")?,
@@ -565,6 +663,16 @@ impl Repository {
         Ok(())
     }
 
+    pub fn mark_platform_account_synced(&self, id: &str, server_version: i64) -> SqliteResult<()> {
+        let now = now();
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE platform_accounts SET server_version = ?1, sync_status = 'synced', synced_at = ?2, updated_at = ?3 WHERE id = ?4",
+            params![server_version, now, now, id],
+        )?;
+        Ok(())
+    }
+
     /// 删除平台账号
     pub fn delete_platform_account(&self, id: &str) -> SqliteResult<()> {
         let conn = self.conn.lock().unwrap();
@@ -624,6 +732,166 @@ impl Repository {
             params![status, error_message, now, id],
         )?;
         Ok(())
+    }
+
+    // ============ 项目私有选题操作 ============
+
+    pub fn create_project_topic(
+        &self,
+        user_id: &str,
+        project_id: &str,
+        title: &str,
+        payload: &str,
+        batch_date: Option<&str>,
+        source_uid: Option<&str>,
+        status: i64,
+    ) -> SqliteResult<ProjectTopic> {
+        let id = gen_uuid();
+        let now = now();
+
+        let actual_id: String;
+        {
+            let conn = self.conn.lock().unwrap();
+            actual_id = conn.query_row(
+                "INSERT INTO project_topics (id, user_id, project_id, title, payload, batch_date, source_uid, status, sync_status, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'pending', ?9, ?10)
+                 ON CONFLICT(project_id, batch_date, source_uid) DO UPDATE SET
+                    title = excluded.title,
+                    payload = excluded.payload,
+                    status = excluded.status,
+                    sync_status = 'pending',
+                    local_version = local_version + 1,
+                    updated_at = excluded.updated_at
+                 RETURNING id",
+                params![id, user_id, project_id, title, payload, batch_date, source_uid, status, now, now],
+                |row| row.get(0),
+            )?;
+        }
+
+        self.get_project_topic(&actual_id).map(|t| t.unwrap())
+    }
+
+    pub fn get_project_topic(&self, id: &str) -> SqliteResult<Option<ProjectTopic>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT * FROM project_topics WHERE id = ?1 AND is_deleted = 0")?;
+        let mut rows = stmt.query(params![id])?;
+        if let Some(row) = rows.next()? {
+            Ok(Some(self.row_to_project_topic(row)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn list_project_topics(&self, project_id: &str) -> SqliteResult<Vec<ProjectTopic>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT * FROM project_topics WHERE project_id = ?1 AND is_deleted = 0 ORDER BY created_at DESC",
+        )?;
+        let mut rows = stmt.query(params![project_id])?;
+        let mut topics = Vec::new();
+        while let Some(row) = rows.next()? {
+            topics.push(self.row_to_project_topic(row)?);
+        }
+        Ok(topics)
+    }
+
+    pub fn list_pending_project_topics(&self, project_id: &str) -> SqliteResult<Vec<ProjectTopic>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT * FROM project_topics WHERE project_id = ?1 AND sync_status = 'pending' ORDER BY created_at ASC",
+        )?;
+        let mut rows = stmt.query(params![project_id])?;
+        let mut topics = Vec::new();
+        while let Some(row) = rows.next()? {
+            topics.push(self.row_to_project_topic(row)?);
+        }
+        Ok(topics)
+    }
+
+    pub fn sync_project_topic(
+        &self,
+        id: &str,
+        user_id: &str,
+        project_id: &str,
+        title: &str,
+        payload: &str,
+        batch_date: Option<&str>,
+        source_uid: Option<&str>,
+        status: i64,
+        server_version: i64,
+        is_deleted: bool,
+        deleted_at: Option<i64>,
+    ) -> SqliteResult<()> {
+        let now = now();
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO project_topics (id, user_id, project_id, title, payload, batch_date, source_uid, status, is_deleted, deleted_at, server_version, sync_status, synced_at, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'synced', ?12, ?13, ?14)
+             ON CONFLICT(id) DO UPDATE SET
+                title = excluded.title,
+                payload = excluded.payload,
+                batch_date = excluded.batch_date,
+                source_uid = excluded.source_uid,
+                status = excluded.status,
+                is_deleted = excluded.is_deleted,
+                deleted_at = excluded.deleted_at,
+                server_version = excluded.server_version,
+                sync_status = 'synced',
+                synced_at = excluded.synced_at,
+                updated_at = excluded.updated_at",
+            params![
+                id,
+                user_id,
+                project_id,
+                title,
+                payload,
+                batch_date,
+                source_uid,
+                status,
+                if is_deleted { 1 } else { 0 },
+                deleted_at,
+                server_version,
+                now,
+                now,
+                now
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn mark_project_topic_synced(
+        &self,
+        id: &str,
+        server_version: i64,
+    ) -> SqliteResult<()> {
+        let now = now();
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE project_topics SET server_version = ?1, sync_status = 'synced', synced_at = ?2, updated_at = ?3 WHERE id = ?4",
+            params![server_version, now, now, id],
+        )?;
+        Ok(())
+    }
+
+    fn row_to_project_topic(&self, row: &rusqlite::Row) -> SqliteResult<ProjectTopic> {
+        Ok(ProjectTopic {
+            id: row.get("id")?,
+            user_id: row.get("user_id")?,
+            project_id: row.get("project_id")?,
+            title: row.get("title")?,
+            payload: row.get("payload")?,
+            batch_date: row.get("batch_date")?,
+            source_uid: row.get("source_uid")?,
+            status: row.get("status")?,
+            is_deleted: row.get::<_, i32>("is_deleted")? != 0,
+            deleted_at: row.get("deleted_at")?,
+            synced_at: row.get("synced_at")?,
+            server_version: row.get("server_version")?,
+            local_version: row.get("local_version")?,
+            sync_status: row.get("sync_status")?,
+            created_at: row.get("created_at")?,
+            updated_at: row.get("updated_at")?,
+        })
     }
 
     fn row_to_publication(&self, row: &rusqlite::Row) -> SqliteResult<Publication> {

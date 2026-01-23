@@ -12,7 +12,7 @@ mod sync;
 
 use db::{DbState, init_db};
 use sidecar::SidecarManager;
-use sync::{SyncEngine, providers::{UserProvider, ProjectProvider, AccountProvider}};
+use sync::{SyncEngine, providers::{UserProvider, ProjectProvider, AccountProvider, ProjectTopicProvider}};
 use std::sync::{Arc, Mutex};
 
 /// 全局 Sidecar 管理器状态
@@ -78,6 +78,7 @@ pub fn run() {
             commands::db_list_publications,
             commands::db_create_publication,
             commands::db_update_publication_status,
+            commands::generate_project_topics,
             commands::sync_user_to_local,
             commands::sync_project_to_local,
             commands::start_platform_login,
@@ -110,6 +111,7 @@ pub fn run() {
                     engine.register_provider(UserProvider);
                     engine.register_provider(ProjectProvider);
                     engine.register_provider(AccountProvider);
+                    engine.register_provider(ProjectTopicProvider);
                     
                     let sync_state = app.state::<SyncState>();
                     *sync_state.lock().unwrap() = Some(Arc::new(engine));

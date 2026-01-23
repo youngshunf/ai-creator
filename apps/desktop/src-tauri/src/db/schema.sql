@@ -5,7 +5,6 @@
 -- 用户表（仅当前用户）
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
-    uuid TEXT,
     email TEXT,
     phone TEXT,
     username TEXT,
@@ -140,6 +139,28 @@ CREATE TABLE IF NOT EXISTS publications (
     FOREIGN KEY (account_id) REFERENCES platform_accounts(id)
 );
 
+-- 项目私有选题表
+CREATE TABLE IF NOT EXISTS project_topics (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    batch_date TEXT,
+    source_uid TEXT,
+    status INTEGER DEFAULT 0,
+    is_deleted INTEGER DEFAULT 0,
+    deleted_at INTEGER,
+    synced_at INTEGER,
+    server_version INTEGER DEFAULT 0,
+    local_version INTEGER DEFAULT 0,
+    sync_status TEXT DEFAULT 'synced',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+
 -- 同步元数据表
 CREATE TABLE IF NOT EXISTS sync_metadata (
     table_name TEXT PRIMARY KEY,
@@ -186,6 +207,10 @@ CREATE INDEX IF NOT EXISTS idx_contents_user_id ON contents(user_id);
 CREATE INDEX IF NOT EXISTS idx_contents_project_id ON contents(project_id);
 CREATE INDEX IF NOT EXISTS idx_publications_user_id ON publications(user_id);
 CREATE INDEX IF NOT EXISTS idx_publications_content_id ON publications(content_id);
+CREATE INDEX IF NOT EXISTS idx_project_topics_user_id ON project_topics(user_id);
+CREATE INDEX IF NOT EXISTS idx_project_topics_project_id ON project_topics(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_topics_sync_status ON project_topics(sync_status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_project_topics_unique ON project_topics(project_id, batch_date, source_uid);
 CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status);
 CREATE INDEX IF NOT EXISTS idx_sync_queue_table ON sync_queue(table_name, status);
 CREATE INDEX IF NOT EXISTS idx_sync_conflicts_status ON sync_conflicts(status);

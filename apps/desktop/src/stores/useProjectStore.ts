@@ -31,7 +31,6 @@ interface RawProject {
 // 前端使用的 Project 结构 (解析后的数组)
 export interface Project {
   id: string;
-  uuid: string; // 兼容旧代码，等于 id
   user_id: string;
   name: string;
   description?: string;
@@ -114,7 +113,6 @@ const parseJsonArray = (jsonStr?: string | null): string[] => {
 // 辅助函数：将 RawProject 转换为 Project
 const mapRawToProject = (raw: RawProject): Project => ({
   ...raw,
-  uuid: raw.id,
   sub_industries: parseJsonArray(raw.sub_industries),
   brand_keywords: parseJsonArray(raw.brand_keywords),
   topics: parseJsonArray(raw.topics),
@@ -134,11 +132,11 @@ export const useProjectStore = create<ProjectState>()(
       fetchProjects: async (retryCount = 0) => {
         set({ isLoading: true, error: null });
         try {
-          // 获取当前用户ID（优先使用 uuid，保持与本地 SQLite 一致）
+          // 获取当前用户ID
           const userStore = useAuthStore.getState();
           // 如果用户未登录，使用默认ID (为了离线支持)
-          const effectiveUserId = userStore.user?.uuid
-            ? String(userStore.user.uuid)
+          const effectiveUserId = userStore.user?.id
+            ? String(userStore.user.id)
             : "current-user";
 
           console.log(
@@ -182,7 +180,7 @@ export const useProjectStore = create<ProjectState>()(
         set({ isLoading: true, error: null });
         try {
           const user = useAuthStore.getState().user;
-          const effectiveUserId = user?.uuid ? String(user.uuid) : "current-user";
+          const effectiveUserId = user?.id ? String(user.id) : "current-user";
 
           const rawProject = await invoke<RawProject>("db_create_project", {
             userId: effectiveUserId,
@@ -284,8 +282,8 @@ export const useProjectStore = create<ProjectState>()(
       setDefaultProject: async (id: string) => {
         try {
           const auth = useAuthStore.getState();
-          const effectiveUserId = auth.user?.uuid
-            ? String(auth.user.uuid)
+          const effectiveUserId = auth.user?.id
+            ? String(auth.user.id)
             : "current-user";
 
           // 调用本地命令，保证同一用户只有一个默认项目
@@ -303,7 +301,8 @@ export const useProjectStore = create<ProjectState>()(
             const newCurrent =
               state.currentProject && state.currentProject.id === id
                 ? { ...state.currentProject, is_default: true }
-                : updatedProjects.find((p) => p.id === id) || state.currentProject;
+                : updatedProjects.find((p) => p.id === id) ||
+                  state.currentProject;
 
             return {
               projects: updatedProjects,
