@@ -44,12 +44,12 @@ function RootComponent() {
     };
   }, [navigate]);
 
-  // 自动同步逻辑
   useEffect(() => {
-    if (isAuthenticated && user?.id && token) {
+    // 自动同步逻辑
+    if (isAuthenticated && user?.uuid && token) {
       console.log("[AutoSync] Starting auto-sync...");
       // 调用 Rust 后端命令 start_sync
-      invoke("start_sync", { userId: String(user.id), token: token })
+      invoke("start_sync", { userId: String(user.uuid), token: token })
         .then(() => console.log("[AutoSync] Sync started successfully"))
         .catch((e) => {
           console.error("[AutoSync] Failed to start sync:", e);
@@ -60,7 +60,7 @@ function RootComponent() {
           }
         });
     }
-  }, [isAuthenticated, user?.id, token]);
+  }, [isAuthenticated, user?.uuid, token]);
 
   // 登录页不使用主布局
   if (location.pathname === "/login") {

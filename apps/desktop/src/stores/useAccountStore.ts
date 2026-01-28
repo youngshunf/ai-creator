@@ -142,8 +142,8 @@ export const useAccountStore = create<AccountState>((set, get) => ({
     await new Promise((r) => setTimeout(r, 50));
     try {
       const authUser = useAuthStore.getState().user;
-      const effectiveUserId = authUser?.id
-        ? String(authUser.id)
+      const effectiveUserId = authUser?.uuid
+        ? String(authUser.uuid)
         : "current-user";
       const account = await invoke<PlatformAccount>("db_create_account", {
         userId: effectiveUserId,

@@ -40,18 +40,36 @@ export function useAuth() {
   // 处理登录成功逻辑
   const handleLoginSuccess = useCallback(
     async (resp: LoginResult) => {
-      const expiresAt = new Date(resp.access_token_expire_time).getTime();
-      setAuth(resp.user, resp.access_token, resp.refresh_token, expiresAt);
+      // 后端目前有两种返回：
+      // - /auth/login: user.{ id: number, uuid: string, ... }
+      // - /auth/phone-login: user.{ uuid: string, ... }
+      // 这里统一使用 uuid 作为前端 user.uuid，保证与云端 user_id 一致
+      const rawUser: any = resp.user as any;
+      const effectiveUserUuid: string =
+        (rawUser.uuid as string) ?? String(rawUser.id ?? "");
 
-      // 同步用户信息到本地 SQLite
+      const normalizedUser = {
+        uuid: effectiveUserUuid,
+        username: rawUser.username as string,
+        nickname: rawUser.nickname as string,
+        phone: rawUser.phone as string | undefined,
+        email: rawUser.email as string | undefined,
+        avatar: rawUser.avatar as string | undefined,
+        is_new_user: Boolean(rawUser.is_new_user),
+      };
+
+      const expiresAt = new Date(resp.access_token_expire_time).getTime();
+      setAuth(normalizedUser, resp.access_token, resp.refresh_token, expiresAt);
+
+      // 同步用户信息到本地 SQLite（以 UUID 作为主键）
       try {
         const { invoke } = await import("@tauri-apps/api/core");
         await invoke("sync_user_to_local", {
-          userId: resp.user.id,
-          email: resp.user.email || null,
-          username: resp.user.username || null,
-          nickname: resp.user.nickname || null,
-          avatar: resp.user.avatar || null,
+          user_id: effectiveUserUuid,
+          email: normalizedUser.email || null,
+          username: normalizedUser.username || null,
+          nickname: normalizedUser.nickname || null,
+          avatar: normalizedUser.avatar || null,
         });
         console.log("[Auth] User synced to local database");
       } catch (err) {
@@ -79,7 +97,7 @@ export function useAuth() {
       try {
         const { invoke } = await import("@tauri-apps/api/core");
         await invoke("start_sync", {
-          userId: resp.user.id,
+          userId: effectiveUserUuid,
           token: resp.access_token,
         });
         console.log("[Auth] Background sync started");

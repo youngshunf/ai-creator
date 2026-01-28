@@ -3,16 +3,21 @@
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json;
+
 use crate::db::Repository;
-use crate::sync::{ApiClient, providers::SyncProvider};
+use crate::sync::{providers::SyncProvider, ApiClient};
 
 pub struct AccountProvider;
 
-/// 云端返回的平台账号信息
-#[derive(Debug, Deserialize)]
-struct ApiAccount {
-    id: String,
-    project_id: String,
+    /// 云端返回的平台账号信息（PlatformAccountInfo）
+    #[derive(Debug, Deserialize)]
+    struct ApiAccount {
+        /// 平台账号 UID（platform_accounts.uid）
+        id: String,
+        /// 账户所属用户 UID（sys_user.uuid）
+        user_id: String,
+        /// 关联项目 UID（projects.uid）
+        project_id: String,
     platform: String,
     account_id: String,
     account_name: Option<String>,
@@ -23,8 +28,8 @@ struct ApiAccount {
     is_active: Option<bool>,
     session_valid: Option<bool>,
     metadata_info: Option<serde_json::Value>,
-    is_deleted: Option<bool>,
-    server_version: Option<i64>,
+    is_deleted: bool,
+    server_version: i64,
 }
 
 #[async_trait]
@@ -35,7 +40,8 @@ impl SyncProvider for AccountProvider {
 
     async fn pull(&self, client: &ApiClient, repo: &Repository, user_id: &str, token: &str) -> Result<(), String> {
         // 0. 确保用户存在
-        repo.ensure_user_exists(user_id).map_err(|e| e.to_string())?;
+        repo.ensure_user_exists(user_id)
+            .map_err(|e| e.to_string())?;
 
         // 1. 获取账号列表
         #[derive(Deserialize)]
@@ -43,22 +49,27 @@ impl SyncProvider for AccountProvider {
             data: Vec<ApiAccount>,
         }
 
-        // 调用 /api/v1/platform-accounts 获取当前用户的所有平台账号
-        let resp: ApiResponse = client.get("/platform-accounts", Some(token)).await.or_else(|e| {
-            eprintln!("[AccountProvider] Error fetching accounts: {}", e);
-            Ok::<ApiResponse, String>(ApiResponse { data: vec![] })
-        })?;
-        
-        eprintln!("[AccountProvider] Received {} accounts from cloud", resp.data.len());
-        
-        for acc in resp.data {
-            eprintln!("[AccountProvider] Processing account: {} ({}) for project_id: {}", 
-                acc.account_id, acc.platform, acc.project_id);
+        // 调用 /platform-accounts 获取当前用户的所有平台账号
+        let resp: ApiResponse = client.get("/platform-accounts", Some(token)).await?;
 
-            // 确保项目存在
-            repo.ensure_project_exists(&acc.project_id, user_id).map_err(|e| e.to_string())?;
+        eprintln!(
+            "[AccountProvider] Received {} accounts from cloud",
+            resp.data.len()
+        );
+
+        for acc in resp.data {
+            eprintln!(
+                "[AccountProvider] Processing account: {} ({}) for project_id: {}",
+                acc.account_id, acc.platform, acc.project_id
+            );
+
+            // 确保项目存在（按项目 UID 同一 ID）
+            repo.ensure_project_exists(&acc.project_id, user_id)
+                .map_err(|e| e.to_string())?;
 
             let metadata_str = acc.metadata_info.map(|v| v.to_string());
+
+            // 云端/本地 ID 统一: 使用 id 作为主键
             repo.sync_platform_account(
                 &acc.id,
                 user_id,
@@ -73,24 +84,29 @@ impl SyncProvider for AccountProvider {
                 acc.is_active.unwrap_or(true),
                 acc.session_valid.unwrap_or(false),
                 metadata_str.as_deref(),
-                acc.is_deleted.unwrap_or(false),
-                acc.server_version.unwrap_or(0),
-            ).map_err(|e| e.to_string())?;
-            
-            eprintln!("[AccountProvider] Successfully synced account: {} with profile", acc.account_id);
+                acc.is_deleted,
+                acc.server_version,
+            )
+            .map_err(|e| e.to_string())?;
+
+            eprintln!(
+                "[AccountProvider] Successfully synced account: {} with profile",
+                acc.account_id
+            );
         }
 
         Ok(())
     }
 
     async fn push(&self, client: &ApiClient, repo: &Repository, user_id: &str, token: &str) -> Result<(), String> {
-        #[derive(Deserialize)]
+        #[derive(Debug, Deserialize)]
         struct ApiAccountResponse {
             id: String,
-            server_version: i64,
+            project_id: String,
+                        server_version: i64,
         }
 
-        #[derive(Deserialize)]
+        #[derive(Debug, Deserialize)]
         struct ApiResponse {
             data: ApiAccountResponse,
         }
@@ -106,6 +122,7 @@ impl SyncProvider for AccountProvider {
                 .as_ref()
                 .and_then(|v| serde_json::from_str::<serde_json::Value>(v).ok())
                 .unwrap_or_else(|| serde_json::json!({}));
+
             let body = serde_json::json!({
                 "id": acc.id,
                 "project_id": acc.project_id,
@@ -123,9 +140,14 @@ impl SyncProvider for AccountProvider {
             });
 
             let resp: ApiResponse = client.post(&path, &body, Some(token)).await?;
+
             if resp.data.id != acc.id {
                 return Err("Platform account sync failed: id mismatch".to_string());
             }
+            if resp.data.project_id != acc.project_id {
+                return Err("Platform account sync failed: project_id mismatch".to_string());
+            }
+
             repo
                 .mark_platform_account_synced(&acc.id, resp.data.server_version)
                 .map_err(|e| e.to_string())?;

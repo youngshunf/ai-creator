@@ -35,7 +35,8 @@ impl ToString for SyncStatus {
 /// 用户
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
-    pub id: String,
+    /// 本地用户主键，语义与云端 sys_user.uuid 一致
+    pub uuid: String,
     pub email: Option<String>,
     pub phone: Option<String>,
     pub username: Option<String>,
@@ -55,7 +56,9 @@ pub struct User {
 /// 项目
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Project {
+    /// 本地项目主键，语义与云端 projects.uid 一致
     pub id: String,
+    /// 关联用户 UID（sys_user.uuid）
     pub user_id: String,
     pub name: String,
     pub description: Option<String>,
@@ -84,8 +87,11 @@ pub struct Project {
 /// 平台账号
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlatformAccount {
+    /// 本地平台账号主键，语义与云端 platform_accounts.uid 一致
     pub id: String,
+    /// 关联用户 UID
     pub user_id: String,
+    /// 关联项目 UID
     pub project_id: String,
     pub platform: String,
     pub account_id: String,
@@ -112,8 +118,11 @@ pub struct PlatformAccount {
 /// 项目私有选题
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectTopic {
+    /// 本地选题主键，语义与云端 project_topics.uid 一致
     pub id: String,
+    /// 关联用户 UID
     pub user_id: String,
+    /// 关联项目 UID
     pub project_id: String,
     pub title: String,
     pub payload: String,

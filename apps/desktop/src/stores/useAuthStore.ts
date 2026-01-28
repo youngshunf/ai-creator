@@ -6,7 +6,11 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 export interface User {
-  id: string;
+  /**
+   * 统一使用 UUID 作为前端用户 ID（用于本地 SQLite user_id / project.user_id 等）
+   * 语义与云端 sys_user.uuid 一致
+   */
+  uuid: string;
   username: string;
   nickname: string;
   phone?: string;

@@ -3,8 +3,9 @@
 -- @author Ysf
 
 -- 用户表（仅当前用户）
+-- 统一使用 uuid 作为主键，语义与云端 sys_user.uuid 一致
 CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
+    uuid TEXT PRIMARY KEY,
     email TEXT,
     phone TEXT,
     username TEXT,
@@ -23,8 +24,8 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- 项目表
 CREATE TABLE IF NOT EXISTS projects (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
+    uid TEXT PRIMARY KEY,
+    user_uid TEXT NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
     industry TEXT,
@@ -47,14 +48,14 @@ CREATE TABLE IF NOT EXISTS projects (
     sync_status TEXT DEFAULT 'synced',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_uid) REFERENCES users(uuid)
 );
 
 -- 平台账号表
 CREATE TABLE IF NOT EXISTS platform_accounts (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    project_id TEXT NOT NULL,
+    uid TEXT PRIMARY KEY,
+    user_uid TEXT NOT NULL,
+    project_uid TEXT NOT NULL,
     platform TEXT NOT NULL,
     account_id TEXT NOT NULL,
     account_name TEXT,
@@ -75,8 +76,8 @@ CREATE TABLE IF NOT EXISTS platform_accounts (
     sync_status TEXT DEFAULT 'synced',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (project_id) REFERENCES projects(id)
+    FOREIGN KEY (user_uid) REFERENCES users(uuid),
+    FOREIGN KEY (project_uid) REFERENCES projects(uid)
 );
 
 -- 内容表
@@ -107,7 +108,7 @@ CREATE TABLE IF NOT EXISTS contents (
     sync_status TEXT DEFAULT 'synced',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (user_id) REFERENCES users(uuid),
     FOREIGN KEY (project_id) REFERENCES projects(id),
     FOREIGN KEY (parent_id) REFERENCES contents(id)
 );
@@ -134,16 +135,16 @@ CREATE TABLE IF NOT EXISTS publications (
     sync_status TEXT DEFAULT 'synced',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (user_id) REFERENCES users(uuid),
     FOREIGN KEY (content_id) REFERENCES contents(id),
     FOREIGN KEY (account_id) REFERENCES platform_accounts(id)
 );
 
 -- 项目私有选题表
 CREATE TABLE IF NOT EXISTS project_topics (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    project_id TEXT NOT NULL,
+    uid TEXT PRIMARY KEY,
+    user_uid TEXT NOT NULL,
+    project_uid TEXT NOT NULL,
     title TEXT NOT NULL,
     payload TEXT NOT NULL,
     batch_date TEXT,
@@ -157,8 +158,8 @@ CREATE TABLE IF NOT EXISTS project_topics (
     sync_status TEXT DEFAULT 'synced',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (project_id) REFERENCES projects(id)
+    FOREIGN KEY (user_uid) REFERENCES users(uuid),
+    FOREIGN KEY (project_uid) REFERENCES projects(uid)
 );
 
 -- 同步元数据表
@@ -183,6 +184,12 @@ CREATE TABLE IF NOT EXISTS sync_conflicts (
     created_at INTEGER NOT NULL
 );
 
+-- 应用状态表（用于存储当前激活用户等全局状态）
+CREATE TABLE IF NOT EXISTS app_state (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 -- 待同步队列表
 CREATE TABLE IF NOT EXISTS sync_queue (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -198,19 +205,19 @@ CREATE TABLE IF NOT EXISTS sync_queue (
 );
 
 -- 索引
-CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
-CREATE INDEX IF NOT EXISTS idx_platform_accounts_user_id ON platform_accounts(user_id);
-CREATE INDEX IF NOT EXISTS idx_platform_accounts_project_id ON platform_accounts(project_id);
+CREATE INDEX IF NOT EXISTS idx_projects_user_uid ON projects(user_uid);
+CREATE INDEX IF NOT EXISTS idx_platform_accounts_user_uid ON platform_accounts(user_uid);
+CREATE INDEX IF NOT EXISTS idx_platform_accounts_project_uid ON platform_accounts(project_uid);
 -- 确保同一项目下的同一平台账号唯一
-CREATE UNIQUE INDEX IF NOT EXISTS idx_platform_accounts_unique ON platform_accounts(project_id, platform, account_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_platform_accounts_unique ON platform_accounts(project_uid, platform, account_id);
 CREATE INDEX IF NOT EXISTS idx_contents_user_id ON contents(user_id);
 CREATE INDEX IF NOT EXISTS idx_contents_project_id ON contents(project_id);
 CREATE INDEX IF NOT EXISTS idx_publications_user_id ON publications(user_id);
 CREATE INDEX IF NOT EXISTS idx_publications_content_id ON publications(content_id);
-CREATE INDEX IF NOT EXISTS idx_project_topics_user_id ON project_topics(user_id);
-CREATE INDEX IF NOT EXISTS idx_project_topics_project_id ON project_topics(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_topics_user_uid ON project_topics(user_uid);
+CREATE INDEX IF NOT EXISTS idx_project_topics_project_uid ON project_topics(project_uid);
 CREATE INDEX IF NOT EXISTS idx_project_topics_sync_status ON project_topics(sync_status);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_project_topics_unique ON project_topics(project_id, batch_date, source_uid);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_project_topics_unique ON project_topics(project_uid, batch_date, source_uid);
 CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status);
 CREATE INDEX IF NOT EXISTS idx_sync_queue_table ON sync_queue(table_name, status);
 CREATE INDEX IF NOT EXISTS idx_sync_conflicts_status ON sync_conflicts(status);

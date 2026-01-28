@@ -2,10 +2,10 @@
  * AI 写作 Hook
  * @author Ysf
  */
-import { useState, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { WritingStyle, getStyleById } from '@/config/writingStyles';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useState, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { WritingStyle, getStyleById } from "@/config/writingStyles";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 export interface AIWriterOptions {
   topic: string;
@@ -41,16 +41,22 @@ export function useAIWriter(): UseAIWriterReturn {
 
   const generate = useCallback(
     async (options: AIWriterOptions): Promise<AIWriterResult | null> => {
-      const { topic, styleId, platform, keywords = [], additionalPrompt } = options;
+      const {
+        topic,
+        styleId,
+        platform,
+        keywords = [],
+        additionalPrompt,
+      } = options;
 
       if (!topic.trim()) {
-        setError('请输入创作主题');
+        setError("请输入创作主题");
         return null;
       }
 
       const style = getStyleById(styleId);
       if (!style) {
-        setError('请选择写作风格');
+        setError("请选择写作风格");
         return null;
       }
 
@@ -65,17 +71,27 @@ export function useAIWriter(): UseAIWriterReturn {
       try {
         setProgress(10);
 
-        const prompt = buildPrompt(topic, style, platform, keywords, additionalPrompt);
+        const prompt = buildPrompt(
+          topic,
+          style,
+          platform,
+          keywords,
+          additionalPrompt,
+        );
 
         setProgress(20);
+
+        // 使用当前登录用户的 UUID 作为 user_id，未登录时退化为本地默认用户
+        const authState = useAuthStore.getState();
+        const effectiveUserId = authState.user?.uuid ?? "current-user";
 
         const response = await invoke<{
           success: boolean;
           data?: AIWriterResult;
           error?: string;
-        }>('execute_ai_writing', {
+        }>("execute_ai_writing", {
           request: {
-            graph_name: 'content-creation',
+            graph_name: "content-creation",
             inputs: {
               topic,
               platform: platform || style.platform[0],
@@ -84,15 +100,15 @@ export function useAIWriter(): UseAIWriterReturn {
               system_prompt: style.systemPrompt,
               user_prompt: prompt,
             },
-            user_id: 'local_user',
-            access_token: useAuthStore.getState().getToken() || '',
+            user_id: effectiveUserId,
+            access_token: authState.getToken() || "",
           },
         });
 
         setProgress(90);
 
         if (!response.success || !response.data) {
-          throw new Error(response.error || '生成失败');
+          throw new Error(response.error || "生成失败");
         }
 
         setProgress(100);
@@ -100,10 +116,10 @@ export function useAIWriter(): UseAIWriterReturn {
         return response.data;
       } catch (err) {
         if (controller.signal.aborted) {
-          setError('已取消生成');
+          setError("已取消生成");
         } else {
           const errorMessage =
-            err instanceof Error ? err.message : '生成失败，请重试';
+            err instanceof Error ? err.message : "生成失败，请重试";
           setError(errorMessage);
         }
         return null;
@@ -112,7 +128,7 @@ export function useAIWriter(): UseAIWriterReturn {
         setAbortController(null);
       }
     },
-    []
+    [],
   );
 
   const cancel = useCallback(() => {
@@ -144,7 +160,7 @@ function buildPrompt(
   style: WritingStyle,
   platform?: string,
   keywords: string[] = [],
-  additionalPrompt?: string
+  additionalPrompt?: string,
 ): string {
   let prompt = `请为主题「${topic}」创作一篇${style.name}风格的内容。\n\n`;
 
@@ -153,7 +169,7 @@ function buildPrompt(
   }
 
   if (keywords.length > 0) {
-    prompt += `关键词：${keywords.join('、')}\n`;
+    prompt += `关键词：${keywords.join("、")}\n`;
   }
 
   if (additionalPrompt) {

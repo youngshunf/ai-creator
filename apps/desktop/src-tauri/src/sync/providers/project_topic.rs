@@ -25,7 +25,7 @@ impl SyncProvider for ProjectTopicProvider {
 
         let projects = repo.list_projects(user_id).map_err(|e| e.to_string())?;
         for p in projects {
-            // 使用项目 ID (UUID 字符串) 作为路径参数
+            // 使用项目 UID 作为路径参数
             let path = format!("/projects/{}/topics", p.id);
             let resp: ApiResponse = client.get(&path, Some(token)).await?;
 
@@ -141,7 +141,7 @@ impl SyncProvider for ProjectTopicProvider {
                 topics.push(Value::Object(obj.clone()));
             }
 
-            // 使用项目 ID (UUID 字符串) 作为路径参数
+            // 使用项目 UID 作为路径参数
             let path = format!("/projects/{}/topics/sync", p.id);
             let body = serde_json::json!({ "topics": topics });
             let resp: ApiResponse = client

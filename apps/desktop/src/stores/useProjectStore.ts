@@ -8,6 +8,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useAuthStore } from "./useAuthStore";
 
 // 对应 Rust 后端 Project 结构 (JSON 字符串字段)
+// 注意：id 实际上传递的是项目 UID（projects.uid），user_id 为用户 UID（sys_user.uuid）
 interface RawProject {
   id: string;
   user_id: string;
@@ -135,8 +136,8 @@ export const useProjectStore = create<ProjectState>()(
           // 获取当前用户ID
           const userStore = useAuthStore.getState();
           // 如果用户未登录，使用默认ID (为了离线支持)
-          const effectiveUserId = userStore.user?.id
-            ? String(userStore.user.id)
+          const effectiveUserId = userStore.user?.uuid
+            ? String(userStore.user.uuid)
             : "current-user";
 
           console.log(
@@ -180,7 +181,9 @@ export const useProjectStore = create<ProjectState>()(
         set({ isLoading: true, error: null });
         try {
           const user = useAuthStore.getState().user;
-          const effectiveUserId = user?.id ? String(user.id) : "current-user";
+          const effectiveUserId = user?.uuid
+            ? String(user.uuid)
+            : "current-user";
 
           const rawProject = await invoke<RawProject>("db_create_project", {
             userId: effectiveUserId,
@@ -282,8 +285,8 @@ export const useProjectStore = create<ProjectState>()(
       setDefaultProject: async (id: string) => {
         try {
           const auth = useAuthStore.getState();
-          const effectiveUserId = auth.user?.id
-            ? String(auth.user.id)
+          const effectiveUserId = auth.user?.uuid
+            ? String(auth.user.uuid)
             : "current-user";
 
           // 调用本地命令，保证同一用户只有一个默认项目

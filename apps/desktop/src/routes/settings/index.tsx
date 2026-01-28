@@ -103,10 +103,10 @@ function SettingsPage() {
   const navigate = useNavigate();
 
   const handleStartSync = async () => {
-    if (!user?.id || !token) return;
+    if (!user?.uuid || !token) return;
     try {
       setSyncStatus((prev) => ({ ...prev, is_syncing: true }));
-      await invoke("start_sync", { userId: String(user.id), token });
+      await invoke("start_sync", { userId: String(user.uuid), token });
       // 状态会通过轮询更新
     } catch (e) {
       console.error("Failed to start sync:", e);

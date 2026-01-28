@@ -65,8 +65,8 @@ export function GenerateTopicsDialog({
       toast.success("生成成功", `已生成 ${count} 条私有选题`);
       onSuccess?.(count);
 
-      if (user?.id && token) {
-        invoke("start_sync", { userId: String(user.id), token }).catch(
+      if (user?.uuid && token) {
+        invoke("start_sync", { userId: String(user.uuid), token }).catch(
           () => {},
         );
       }

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{State, AppHandle, Emitter};
 use crate::{SidecarState, SyncState};
 use crate::config::get_config;
+use crate::db::Repository;
 
 #[derive(Serialize, Deserialize)]
 pub struct AppInfo {
@@ -879,6 +880,20 @@ pub async fn get_usage_stats(period: String) -> Result<serde_json::Value, String
 
 use crate::db::{DbState, CreateProject as DbCreateProject, CreateContent as DbCreateContent, CreatePublication as DbCreatePublication};
 
+/// 校验给定的 user_uuid 是否在本地 users 表中存在
+/// 当前版本如果不存在，不尝试自动拉取，而是直接报错，要求重新登录
+fn ensure_user_exists_or_error(repo: &Repository, user_uuid: &str) -> Result<(), String> {
+    if user_uuid.trim().is_empty() {
+        return Err("用户未登录或 user_uuid 为空".to_string());
+    }
+
+    match repo.get_user_by_uuid(user_uuid) {
+        Ok(Some(_)) => Ok(()),
+        Ok(None) => Err("本地用户状态异常，请重新登录".to_string()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 /// 初始化数据库
 #[tauri::command]
 pub fn db_init(state: State<DbState>) -> Result<String, String> {
@@ -895,6 +910,7 @@ pub fn db_init(state: State<DbState>) -> Result<String, String> {
 pub fn db_list_projects(user_id: String, state: State<DbState>) -> Result<serde_json::Value, String> {
     let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
+    ensure_user_exists_or_error(repo, &user_id)?;
     let projects = repo.list_projects(&user_id).map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(projects).unwrap())
 }
@@ -904,6 +920,7 @@ pub fn db_list_projects(user_id: String, state: State<DbState>) -> Result<serde_
 pub fn db_create_project(user_id: String, data: DbCreateProject, state: State<DbState>) -> Result<serde_json::Value, String> {
     let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
+    ensure_user_exists_or_error(repo, &user_id)?;
     let project = repo.create_project(&user_id, &data).map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(project).unwrap())
 }
@@ -922,6 +939,7 @@ pub fn db_delete_project(id: String, state: State<DbState>) -> Result<String, St
 pub fn db_set_default_project(user_id: String, project_id: String, state: State<DbState>) -> Result<String, String> {
     let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
+    ensure_user_exists_or_error(repo, &user_id)?;
     repo.set_default_project(&user_id, &project_id).map_err(|e| e.to_string())?;
     Ok("设置成功".to_string())
 }
@@ -940,6 +958,7 @@ pub fn db_list_contents(project_id: String, state: State<DbState>) -> Result<ser
 pub fn db_create_content(user_id: String, data: DbCreateContent, state: State<DbState>) -> Result<serde_json::Value, String> {
     let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
+    ensure_user_exists_or_error(repo, &user_id)?;
     let content = repo.create_content(&user_id, &data).map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(content).unwrap())
 }
@@ -976,6 +995,7 @@ pub fn db_list_accounts(project_id: String, state: State<DbState>) -> Result<ser
 pub fn db_create_account(user_id: String, project_id: String, platform: String, account_id: String, account_name: Option<String>, state: State<DbState>) -> Result<serde_json::Value, String> {
     let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
+    ensure_user_exists_or_error(repo, &user_id)?;
     // 确保项目存在（满足外键约束）
     repo.ensure_project_exists(&project_id, &user_id).map_err(|e| e.to_string())?;
     let account = repo.create_platform_account(&user_id, &project_id, &platform, &account_id, account_name.as_deref()).map_err(|e| e.to_string())?;
@@ -1005,6 +1025,7 @@ pub fn db_list_publications(content_id: String, state: State<DbState>) -> Result
 pub fn db_create_publication(user_id: String, data: DbCreatePublication, state: State<DbState>) -> Result<serde_json::Value, String> {
     let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
+    ensure_user_exists_or_error(repo, &user_id)?;
     let publication = repo.create_publication(&user_id, &data).map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(publication).unwrap())
 }
@@ -1122,11 +1143,22 @@ pub fn generate_project_topics(
 }
 
 /// 同步用户信息到本地数据库
+///
+/// 注意：这里期望传入的是后端用户的 UUID 字符串，作为本地 users.uuid
 #[tauri::command]
-pub fn sync_user_to_local(user_id: String, email: Option<String>, username: Option<String>, nickname: Option<String>, avatar: Option<String>, state: State<DbState>) -> Result<String, String> {
+pub fn sync_user_to_local(
+    user_id: String,
+    email: Option<String>,
+    username: Option<String>,
+    nickname: Option<String>,
+    avatar: Option<String>,
+    state: State<DbState>,
+) -> Result<String, String> {
     let db = state.lock().map_err(|e| e.to_string())?;
     let repo = db.as_ref().ok_or("数据库未初始化")?;
-    repo.sync_user(&user_id, email.as_deref(), username.as_deref(), nickname.as_deref(), avatar.as_deref()).map_err(|e| e.to_string())?;
+    repo.sync_user(&user_id, email.as_deref(), username.as_deref(), nickname.as_deref(), avatar.as_deref())
+        .map_err(|e| e.to_string())?;
+    repo.set_active_user_uuid(&user_id).map_err(|e| e.to_string())?;
     Ok("用户同步成功".to_string())
 }
 

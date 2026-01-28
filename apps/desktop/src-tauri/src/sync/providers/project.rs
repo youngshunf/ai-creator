@@ -3,18 +3,19 @@
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value;
+
 use crate::db::Repository;
-use crate::sync::{ApiClient, providers::SyncProvider};
+use crate::sync::{providers::SyncProvider, ApiClient};
 
 pub struct ProjectProvider;
 
-#[derive(Debug, Deserialize)]
-struct ApiProject {
-    id: String,
-    name: String,
-    description: Option<String>,
-    // TODO: 添加更多字段
-}
+    /// 云端返回的项目列表元素（ProjectListResponse）
+    #[derive(Debug, Deserialize)]
+    struct ApiProject {
+        /// 项目 UID（云端 projects.uid）
+        id: String,
+        name: String,
+    }
 
 #[async_trait]
 impl SyncProvider for ProjectProvider {
@@ -24,10 +25,11 @@ impl SyncProvider for ProjectProvider {
 
     async fn pull(&self, client: &ApiClient, repo: &Repository, user_id: &str, token: &str) -> Result<(), String> {
         // 0. 确保用户存在 (避免外键错误)
-        repo.ensure_user_exists(user_id).map_err(|e| e.to_string())?;
+        repo.ensure_user_exists(user_id)
+            .map_err(|e| e.to_string())?;
 
         // 1. 从 API 获取项目列表
-        // 假设 API 返回标准响应结构 { code: 200, data: { items: [...], total: ... } }
+        // 后端返回结构: { code, msg, data: { items: [...], total, ... } }
         #[derive(Deserialize)]
         struct ProjectData {
             items: Vec<ApiProject>,
@@ -39,15 +41,11 @@ impl SyncProvider for ProjectProvider {
         }
 
         let resp: ApiResponse = client.get("/projects", Some(token)).await?;
-        
-        // 2. 更新本地数据库
+
+        // 2. 更新本地数据库（只需要 uid 和 name，description 保持原值）
         for p in resp.data.items {
-            repo.sync_project(
-                &p.id,
-                user_id,
-                &p.name,
-                p.description.as_deref(),
-            ).map_err(|e| e.to_string())?;
+            repo.sync_project(&p.id, user_id, &p.name, None)
+                .map_err(|e| e.to_string())?;
         }
 
         Ok(())
@@ -72,7 +70,7 @@ impl SyncProvider for ProjectProvider {
 
         for p in projects {
             let body = serde_json::json!({
-                "id": p.id,
+                "uuid": p.id,
                 "name": p.name,
                 "description": p.description,
                 "industry": p.industry,
@@ -90,7 +88,7 @@ impl SyncProvider for ProjectProvider {
             // 端云 ID 一致，先尝试 PUT 更新，如果不存在则 POST 创建
             let path = format!("/projects/{}", p.id);
             let result: Result<Value, String> = client.put(&path, &body, Some(token)).await;
-            
+
             if result.is_err() {
                 // 不存在，创建新项目
                 let resp: CreateResponse = client.post("/projects", &body, Some(token)).await?;
@@ -98,8 +96,9 @@ impl SyncProvider for ProjectProvider {
                     return Err("Project sync failed: id mismatch".to_string());
                 }
             }
-            
-            repo.mark_project_synced(&p.id).map_err(|e| e.to_string())?;
+
+            repo.mark_project_synced(&p.id)
+                .map_err(|e| e.to_string())?;
         }
 
         Ok(())

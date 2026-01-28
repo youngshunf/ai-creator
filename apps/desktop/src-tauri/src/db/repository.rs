@@ -1,7 +1,7 @@
 //! 数据库操作层
 //! @author Ysf
 
-use rusqlite::{params, Connection, OptionalExtension, Result as SqliteResult};
+use rusqlite::{params, Connection, Result as SqliteResult, OptionalExtension};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -53,7 +53,7 @@ impl Repository {
         let ts = now();
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "INSERT OR IGNORE INTO users (id, email, username, nickname, subscription_tier, created_at, updated_at, status)
+            "INSERT OR IGNORE INTO users (uuid, email, username, nickname, subscription_tier, created_at, updated_at, status)
              VALUES ('current-user', 'local@localhost', 'local', '本地用户', 'free', ?1, ?1, 1)",
             params![ts],
         )?;
@@ -61,11 +61,12 @@ impl Repository {
     }
 
     /// 确保用户存在（用于满足外键约束的兜底方法）
+    /// 这里的 user_id 实际上是用户 UUID
     pub fn ensure_user_exists(&self, user_id: &str) -> SqliteResult<()> {
         let ts = now();
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "INSERT OR IGNORE INTO users (id, email, username, nickname, subscription_tier, created_at, updated_at, status)
+            "INSERT OR IGNORE INTO users (uuid, email, username, nickname, subscription_tier, created_at, updated_at, status)
              VALUES (?1, 'waiting_sync@local', 'pending_' || ?1, '同步中...', 'free', ?2, ?2, 1)",
             params![user_id, ts],
         )?;
@@ -73,28 +74,29 @@ impl Repository {
     }
 
     /// 确保项目存在（用于外键约束）
-    pub fn ensure_project_exists(&self, project_id: &str, user_id: &str) -> SqliteResult<()> {
+    pub fn ensure_project_exists(&self, project_uid: &str, user_uid: &str) -> SqliteResult<()> {
         // 先确保用户存在
-        self.ensure_user_exists(user_id)?;
+        self.ensure_user_exists(user_uid)?;
         
         let ts = now();
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "INSERT OR IGNORE INTO projects (id, user_id, name, sync_status, created_at, updated_at)
+            "INSERT OR IGNORE INTO projects (uid, user_uid, name, sync_status, created_at, updated_at)
              VALUES (?1, ?2, '默认项目', 'pending', ?3, ?3)",
-            params![project_id, user_id, ts],
+            params![project_uid, user_uid, ts],
         )?;
         Ok(())
     }
 
     /// 同步云端用户到本地（登录时调用）
+    /// user_id 语义为用户 UUID
     pub fn sync_user(&self, user_id: &str, email: Option<&str>, username: Option<&str>, nickname: Option<&str>, avatar: Option<&str>) -> SqliteResult<()> {
         let ts = now();
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "INSERT INTO users (id, email, username, nickname, avatar, subscription_tier, created_at, updated_at, status)
+            "INSERT INTO users (uuid, email, username, nickname, avatar, subscription_tier, created_at, updated_at, status)
              VALUES (?1, ?2, ?3, ?4, ?5, 'free', ?6, ?6, 1)
-             ON CONFLICT(id) DO UPDATE SET
+             ON CONFLICT(uuid) DO UPDATE SET
                 email=COALESCE(excluded.email, email),
                 username=COALESCE(excluded.username, username),
                 nickname=COALESCE(excluded.nickname, nickname),
@@ -106,18 +108,18 @@ impl Repository {
     }
 
     /// 同步云端项目到本地（选择项目时调用）
-    pub fn sync_project(&self, project_id: &str, user_id: &str, name: &str, description: Option<&str>) -> SqliteResult<()> {
+    pub fn sync_project(&self, project_uid: &str, user_uid: &str, name: &str, description: Option<&str>) -> SqliteResult<()> {
         let ts = now();
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "INSERT INTO projects (id, user_id, name, description, sync_status, created_at, updated_at)
+            "INSERT INTO projects (uid, user_uid, name, description, sync_status, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, 'synced', ?5, ?5)
-             ON CONFLICT(id) DO UPDATE SET
+             ON CONFLICT(uid) DO UPDATE SET
                 name=excluded.name,
                 description=COALESCE(excluded.description, description),
                 sync_status='synced',
                 updated_at=excluded.updated_at",
-            params![project_id, user_id, name, description, ts],
+            params![project_uid, user_uid, name, description, ts],
         )?;
         Ok(())
     }
@@ -128,9 +130,9 @@ impl Repository {
     pub fn save_user(&self, user: &User) -> SqliteResult<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "INSERT INTO users (id, email, phone, username, nickname, avatar, status, is_superuser, is_staff, subscription_tier, settings, synced_at, server_version, created_at, updated_at)
+            "INSERT INTO users (uuid, email, phone, username, nickname, avatar, status, is_superuser, is_staff, subscription_tier, settings, synced_at, server_version, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
-             ON CONFLICT(id) DO UPDATE SET
+             ON CONFLICT(uuid) DO UPDATE SET
                 email=excluded.email, phone=excluded.phone,
                 username=excluded.username, nickname=excluded.nickname, avatar=excluded.avatar,
                 status=excluded.status, is_superuser=excluded.is_superuser, is_staff=excluded.is_staff,
@@ -138,7 +140,7 @@ impl Repository {
                 synced_at=excluded.synced_at, server_version=excluded.server_version,
                 updated_at=excluded.updated_at",
             params![
-                user.id, user.email, user.phone, user.username, user.nickname, user.avatar,
+                user.uuid, user.email, user.phone, user.username, user.nickname, user.avatar,
                 user.status, user.is_superuser, user.is_staff, user.subscription_tier, user.settings,
                 user.synced_at, user.server_version, user.created_at, user.updated_at
             ],
@@ -146,7 +148,7 @@ impl Repository {
         Ok(())
     }
 
-    /// 获取当前用户
+    /// 获取任意一个用户（旧接口，优先使用 get_user_by_uuid/get_active_user_uuid）
     pub fn get_user(&self) -> SqliteResult<Option<User>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare("SELECT * FROM users LIMIT 1")?;
@@ -157,10 +159,46 @@ impl Repository {
             Ok(None)
         }
     }
+
+    /// 根据 UUID 精确获取用户
+    pub fn get_user_by_uuid(&self, uuid: &str) -> SqliteResult<Option<User>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT * FROM users WHERE uuid = ?1")?;
+        let mut rows = stmt.query(params![uuid])?;
+        if let Some(row) = rows.next()? {
+            Ok(Some(self.row_to_user(row)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// 设置当前激活用户 UUID
+    pub fn set_active_user_uuid(&self, user_uuid: &str) -> SqliteResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO app_state (key, value) VALUES ('active_user_uuid', ?1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![user_uuid],
+        )?;
+        Ok(())
+    }
+
+    /// 获取当前激活用户 UUID
+    pub fn get_active_user_uuid(&self) -> SqliteResult<Option<String>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT value FROM app_state WHERE key = 'active_user_uuid'")?;
+        let mut rows = stmt.query([])?;
+        if let Some(row) = rows.next()? {
+            let v: String = row.get(0)?;
+            Ok(Some(v))
+        } else {
+            Ok(None)
+        }
+    }
     
     fn row_to_user(&self, row: &rusqlite::Row) -> SqliteResult<User> {
         Ok(User {
-            id: row.get("id")?,
+            uuid: row.get("uuid")?,
             email: row.get("email")?,
             phone: row.get("phone").unwrap_or(None),
             username: row.get("username")?,
@@ -181,7 +219,7 @@ impl Repository {
     // ============ 项目操作 ============
 
     /// 创建项目
-    pub fn create_project(&self, user_id: &str, data: &CreateProject) -> SqliteResult<Project> {
+    pub fn create_project(&self, user_uid: &str, data: &CreateProject) -> SqliteResult<Project> {
         let id = gen_uuid();
         let now = now();
         let sub_industries = data.sub_industries.as_ref().map(|v| serde_json::to_string(v).unwrap());
@@ -192,10 +230,10 @@ impl Repository {
         {
             let conn = self.conn.lock().unwrap();
             conn.execute(
-                "INSERT INTO projects (id, user_id, name, description, industry, sub_industries, brand_name, brand_tone, brand_keywords, topics, keywords, sync_status, created_at, updated_at)
+                "INSERT INTO projects (uid, user_uid, name, description, industry, sub_industries, brand_name, brand_tone, brand_keywords, topics, keywords, sync_status, created_at, updated_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'pending', ?12, ?13)",
                 params![
-                    id, user_id, data.name, data.description, data.industry, sub_industries,
+                    id, user_uid, data.name, data.description, data.industry, sub_industries,
                     data.brand_name, data.brand_tone, brand_keywords, topics, keywords, now, now
                 ],
             )?;
@@ -244,10 +282,10 @@ impl Repository {
     }
 
     /// 获取项目
-    pub fn get_project(&self, id: &str) -> SqliteResult<Option<Project>> {
+    pub fn get_project(&self, uid: &str) -> SqliteResult<Option<Project>> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare("SELECT * FROM projects WHERE id = ?1 AND is_deleted = 0")?;
-        let mut rows = stmt.query(params![id])?;
+        let mut stmt = conn.prepare("SELECT * FROM projects WHERE uid = ?1 AND is_deleted = 0")?;
+        let mut rows = stmt.query(params![uid])?;
         if let Some(row) = rows.next()? {
             Ok(Some(self.row_to_project(row)?))
         } else {
@@ -256,12 +294,12 @@ impl Repository {
     }
 
     /// 获取用户所有项目
-    pub fn list_projects(&self, user_id: &str) -> SqliteResult<Vec<Project>> {
+    pub fn list_projects(&self, user_uid: &str) -> SqliteResult<Vec<Project>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT * FROM projects WHERE user_id = ?1 AND is_deleted = 0 ORDER BY is_default DESC, updated_at DESC"
+            "SELECT * FROM projects WHERE user_uid = ?1 AND is_deleted = 0 ORDER BY is_default DESC, updated_at DESC"
         )?;
-        let mut rows = stmt.query(params![user_id])?;
+        let mut rows = stmt.query(params![user_uid])?;
         let mut projects = Vec::new();
         while let Some(row) = rows.next()? {
             projects.push(self.row_to_project(row)?);
@@ -269,12 +307,12 @@ impl Repository {
         Ok(projects)
     }
 
-    pub fn list_pending_projects(&self, user_id: &str) -> SqliteResult<Vec<Project>> {
+    pub fn list_pending_projects(&self, user_uid: &str) -> SqliteResult<Vec<Project>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT * FROM projects WHERE user_id = ?1 AND sync_status = 'pending' ORDER BY updated_at ASC",
+            "SELECT * FROM projects WHERE user_uid = ?1 AND sync_status = 'pending' ORDER BY updated_at ASC",
         )?;
-        let mut rows = stmt.query(params![user_id])?;
+        let mut rows = stmt.query(params![user_uid])?;
         let mut projects = Vec::new();
         while let Some(row) = rows.next()? {
             projects.push(self.row_to_project(row)?);
@@ -282,47 +320,47 @@ impl Repository {
         Ok(projects)
     }
 
-    pub fn mark_project_synced(&self, id: &str) -> SqliteResult<()> {
+    pub fn mark_project_synced(&self, uid: &str) -> SqliteResult<()> {
         let now = now();
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "UPDATE projects SET sync_status = 'synced', synced_at = ?1, updated_at = ?2 WHERE id = ?3",
-            params![now, now, id],
+            "UPDATE projects SET sync_status = 'synced', synced_at = ?1, updated_at = ?2 WHERE uid = ?3",
+            params![now, now, uid],
         )?;
         Ok(())
     }
 
     /// 设置用户的默认项目（保证同一用户仅有一个默认项目）
-    pub fn set_default_project(&self, user_id: &str, project_id: &str) -> SqliteResult<()> {
+    pub fn set_default_project(&self, user_uid: &str, project_uid: &str) -> SqliteResult<()> {
         let now = now();
         let conn = self.conn.lock().unwrap();
         conn.execute(
             "UPDATE projects
-             SET is_default = CASE WHEN id = ?1 THEN 1 ELSE 0 END,
+             SET is_default = CASE WHEN uid = ?1 THEN 1 ELSE 0 END,
                  sync_status = 'pending',
                  local_version = local_version + 1,
                  updated_at = ?2
-             WHERE user_id = ?3 AND is_deleted = 0",
-            params![project_id, now, user_id],
+             WHERE user_uid = ?3 AND is_deleted = 0",
+            params![project_uid, now, user_uid],
         )?;
         Ok(())
     }
 
     /// 删除项目（软删除）
-    pub fn delete_project(&self, id: &str) -> SqliteResult<()> {
+    pub fn delete_project(&self, uid: &str) -> SqliteResult<()> {
         let now = now();
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "UPDATE projects SET is_deleted = 1, deleted_at = ?1, sync_status = 'pending', local_version = local_version + 1, updated_at = ?1 WHERE id = ?2",
-            params![now, id],
+            "UPDATE projects SET is_deleted = 1, deleted_at = ?1, sync_status = 'pending', local_version = local_version + 1, updated_at = ?1 WHERE uid = ?2",
+            params![now, uid],
         )?;
         Ok(())
     }
 
     fn row_to_project(&self, row: &rusqlite::Row) -> SqliteResult<Project> {
         Ok(Project {
-            id: row.get("id")?,
-            user_id: row.get("user_id")?,
+            id: row.get("uid")?,
+            user_id: row.get("user_uid")?,
             name: row.get("name")?,
             description: row.get("description")?,
             industry: row.get("industry")?,
@@ -453,7 +491,7 @@ impl Repository {
     // ============ 平台账号操作 ============
 
     /// 创建平台账号
-    pub fn create_platform_account(&self, user_id: &str, project_id: &str, platform: &str, account_id: &str, account_name: Option<&str>) -> SqliteResult<PlatformAccount> {
+    pub fn create_platform_account(&self, user_uid: &str, project_uid: &str, platform: &str, account_id: &str, account_name: Option<&str>) -> SqliteResult<PlatformAccount> {
         let id = gen_uuid();
         let now = now();
         
@@ -461,15 +499,15 @@ impl Repository {
         {
             let conn = self.conn.lock().unwrap();
             actual_id = conn.query_row(
-                "INSERT INTO platform_accounts (id, user_id, project_id, platform, account_id, account_name, sync_status, created_at, updated_at)
+                "INSERT INTO platform_accounts (uid, user_uid, project_uid, platform, account_id, account_name, sync_status, created_at, updated_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'pending', ?7, ?8)
-                 ON CONFLICT(project_id, platform, account_id) DO UPDATE SET
+                 ON CONFLICT(project_uid, platform, account_id) DO UPDATE SET
                     account_name = COALESCE(excluded.account_name, account_name),
                     sync_status = 'pending',
                     updated_at = excluded.updated_at
-                 RETURNING id",
-                params![id, user_id, project_id, platform, account_id, account_name, now, now],
-                |row| row.get(0),
+                 RETURNING uid",
+                params![id, user_uid, project_uid, platform, account_id, account_name, now, now],
+                |row| row.get::<_, String>(0),
             )?;
         }
 
@@ -477,10 +515,10 @@ impl Repository {
     }
 
     /// 获取平台账号
-    pub fn get_platform_account(&self, id: &str) -> SqliteResult<Option<PlatformAccount>> {
+    pub fn get_platform_account(&self, uid: &str) -> SqliteResult<Option<PlatformAccount>> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare("SELECT * FROM platform_accounts WHERE id = ?1 AND is_deleted = 0")?;
-        let mut rows = stmt.query(params![id])?;
+        let mut stmt = conn.prepare("SELECT * FROM platform_accounts WHERE uid = ?1 AND is_deleted = 0")?;
+        let mut rows = stmt.query(params![uid])?;
         if let Some(row) = rows.next()? {
             Ok(Some(self.row_to_platform_account(row)?))
         } else {
@@ -489,12 +527,12 @@ impl Repository {
     }
 
     /// 获取项目平台账号列表
-    pub fn list_platform_accounts(&self, project_id: &str) -> SqliteResult<Vec<PlatformAccount>> {
+    pub fn list_platform_accounts(&self, project_uid: &str) -> SqliteResult<Vec<PlatformAccount>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT * FROM platform_accounts WHERE project_id = ?1 AND is_deleted = 0 ORDER BY created_at DESC"
+            "SELECT * FROM platform_accounts WHERE project_uid = ?1 AND is_deleted = 0 ORDER BY created_at DESC"
         )?;
-        let mut rows = stmt.query(params![project_id])?;
+        let mut rows = stmt.query(params![project_uid])?;
         let mut accounts = Vec::new();
         while let Some(row) = rows.next()? {
             accounts.push(self.row_to_platform_account(row)?);
@@ -502,12 +540,12 @@ impl Repository {
         Ok(accounts)
     }
 
-    pub fn list_pending_platform_accounts(&self, user_id: &str) -> SqliteResult<Vec<PlatformAccount>> {
+    pub fn list_pending_platform_accounts(&self, user_uid: &str) -> SqliteResult<Vec<PlatformAccount>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT * FROM platform_accounts WHERE user_id = ?1 AND sync_status = 'pending' ORDER BY updated_at ASC",
+            "SELECT * FROM platform_accounts WHERE user_uid = ?1 AND sync_status = 'pending' ORDER BY updated_at ASC",
         )?;
-        let mut rows = stmt.query(params![user_id])?;
+        let mut rows = stmt.query(params![user_uid])?;
         let mut accounts = Vec::new();
         while let Some(row) = rows.next()? {
             accounts.push(self.row_to_platform_account(row)?);
@@ -518,8 +556,8 @@ impl Repository {
     pub fn sync_platform_account(
         &self,
         id: &str,
-        user_id: &str,
-        project_id: &str,
+        user_uid: &str,
+        project_uid: &str,
         platform: &str,
         account_id: &str,
         account_name: Option<&str>,
@@ -537,8 +575,8 @@ impl Repository {
         let conn = self.conn.lock().unwrap();
         let existing_id = conn
             .query_row(
-                "SELECT id FROM platform_accounts WHERE project_id = ?1 AND platform = ?2 AND account_id = ?3",
-                params![project_id, platform, account_id],
+                "SELECT uid FROM platform_accounts WHERE project_uid = ?1 AND platform = ?2 AND account_id = ?3",
+                params![project_uid, platform, account_id],
                 |row| row.get::<_, String>(0),
             )
             .optional()?;
@@ -549,16 +587,39 @@ impl Repository {
                     params![id, existing_id],
                 )?;
                 conn.execute(
-                    "UPDATE platform_accounts SET id = ?1 WHERE id = ?2",
+                    "UPDATE platform_accounts SET uid = ?1 WHERE uid = ?2",
                     params![id, existing_id],
                 )?;
             }
         }
+
         conn.execute(
-            "INSERT INTO platform_accounts (id, user_id, project_id, platform, account_id, account_name, avatar_url, followers_count, following_count, posts_count, is_active, session_valid, metadata, is_deleted, server_version, sync_status, synced_at, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, 'synced', ?16, ?17, ?18)
-             ON CONFLICT(id) DO UPDATE SET
-                project_id = excluded.project_id,
+            "INSERT INTO platform_accounts (
+                uid,
+                user_uid,
+                project_uid,
+                platform,
+                account_id,
+                account_name,
+                avatar_url,
+                followers_count,
+                following_count,
+                posts_count,
+                is_active,
+                session_valid,
+                metadata,
+                is_deleted,
+                server_version,
+                sync_status,
+                synced_at,
+                created_at,
+                updated_at
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, 'synced', ?16, ?17, ?18)
+            ON CONFLICT(uid) DO UPDATE SET
+                user_uid = excluded.user_uid,
+                project_uid = excluded.project_uid,
+                platform = excluded.platform,
+                account_id = excluded.account_id,
                 account_name = excluded.account_name,
                 avatar_url = excluded.avatar_url,
                 followers_count = excluded.followers_count,
@@ -574,8 +635,8 @@ impl Repository {
                 updated_at = excluded.updated_at",
             params![
                 id,
-                user_id,
-                project_id,
+                user_uid,
+                project_uid,
                 platform,
                 account_id,
                 account_name,
@@ -583,14 +644,14 @@ impl Repository {
                 followers_count,
                 following_count,
                 posts_count,
-                is_active,
-                session_valid,
+                if is_active { 1 } else { 0 },
+                if session_valid { 1 } else { 0 },
                 metadata,
-                is_deleted,
+                if is_deleted { 1 } else { 0 },
                 server_version,
                 now,
                 now,
-                now
+                now,
             ],
         )?;
         Ok(())
@@ -598,9 +659,9 @@ impl Repository {
 
     fn row_to_platform_account(&self, row: &rusqlite::Row) -> SqliteResult<PlatformAccount> {
         Ok(PlatformAccount {
-            id: row.get("id")?,
-            user_id: row.get("user_id")?,
-            project_id: row.get("project_id")?,
+            id: row.get("uid")?,
+            user_id: row.get("user_uid")?,
+            project_id: row.get("project_uid")?,
             platform: row.get("platform")?,
             account_id: row.get("account_id")?,
             account_name: row.get("account_name")?,
@@ -667,7 +728,7 @@ impl Repository {
         let now = now();
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "UPDATE platform_accounts SET server_version = ?1, sync_status = 'synced', synced_at = ?2, updated_at = ?3 WHERE id = ?4",
+            "UPDATE platform_accounts SET server_version = ?1, sync_status = 'synced', synced_at = ?2, updated_at = ?3 WHERE uid = ?4",
             params![server_version, now, now, id],
         )?;
         Ok(())
@@ -676,7 +737,7 @@ impl Repository {
     /// 删除平台账号
     pub fn delete_platform_account(&self, id: &str) -> SqliteResult<()> {
         let conn = self.conn.lock().unwrap();
-        conn.execute("DELETE FROM platform_accounts WHERE id = ?1", params![id])?;
+        conn.execute("DELETE FROM platform_accounts WHERE uid = ?1", params![id])?;
         Ok(())
     }
 
@@ -738,8 +799,8 @@ impl Repository {
 
     pub fn create_project_topic(
         &self,
-        user_id: &str,
-        project_id: &str,
+        user_uid: &str,
+        project_uid: &str,
         title: &str,
         payload: &str,
         batch_date: Option<&str>,
@@ -753,17 +814,17 @@ impl Repository {
         {
             let conn = self.conn.lock().unwrap();
             actual_id = conn.query_row(
-                "INSERT INTO project_topics (id, user_id, project_id, title, payload, batch_date, source_uid, status, sync_status, created_at, updated_at)
+                "INSERT INTO project_topics (uid, user_uid, project_uid, title, payload, batch_date, source_uid, status, sync_status, created_at, updated_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'pending', ?9, ?10)
-                 ON CONFLICT(project_id, batch_date, source_uid) DO UPDATE SET
+                 ON CONFLICT(project_uid, batch_date, source_uid) DO UPDATE SET
                     title = excluded.title,
                     payload = excluded.payload,
                     status = excluded.status,
                     sync_status = 'pending',
                     local_version = local_version + 1,
                     updated_at = excluded.updated_at
-                 RETURNING id",
-                params![id, user_id, project_id, title, payload, batch_date, source_uid, status, now, now],
+                 RETURNING uid",
+                params![id, user_uid, project_uid, title, payload, batch_date, source_uid, status, now, now],
                 |row| row.get(0),
             )?;
         }
@@ -771,10 +832,10 @@ impl Repository {
         self.get_project_topic(&actual_id).map(|t| t.unwrap())
     }
 
-    pub fn get_project_topic(&self, id: &str) -> SqliteResult<Option<ProjectTopic>> {
+    pub fn get_project_topic(&self, uid: &str) -> SqliteResult<Option<ProjectTopic>> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare("SELECT * FROM project_topics WHERE id = ?1 AND is_deleted = 0")?;
-        let mut rows = stmt.query(params![id])?;
+        let mut stmt = conn.prepare("SELECT * FROM project_topics WHERE uid = ?1 AND is_deleted = 0")?;
+        let mut rows = stmt.query(params![uid])?;
         if let Some(row) = rows.next()? {
             Ok(Some(self.row_to_project_topic(row)?))
         } else {
@@ -782,12 +843,12 @@ impl Repository {
         }
     }
 
-    pub fn list_project_topics(&self, project_id: &str) -> SqliteResult<Vec<ProjectTopic>> {
+    pub fn list_project_topics(&self, project_uid: &str) -> SqliteResult<Vec<ProjectTopic>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT * FROM project_topics WHERE project_id = ?1 AND is_deleted = 0 ORDER BY created_at DESC",
+            "SELECT * FROM project_topics WHERE project_uid = ?1 AND is_deleted = 0 ORDER BY created_at DESC",
         )?;
-        let mut rows = stmt.query(params![project_id])?;
+        let mut rows = stmt.query(params![project_uid])?;
         let mut topics = Vec::new();
         while let Some(row) = rows.next()? {
             topics.push(self.row_to_project_topic(row)?);
@@ -795,12 +856,12 @@ impl Repository {
         Ok(topics)
     }
 
-    pub fn list_pending_project_topics(&self, project_id: &str) -> SqliteResult<Vec<ProjectTopic>> {
+    pub fn list_pending_project_topics(&self, project_uid: &str) -> SqliteResult<Vec<ProjectTopic>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT * FROM project_topics WHERE project_id = ?1 AND sync_status = 'pending' ORDER BY created_at ASC",
+            "SELECT * FROM project_topics WHERE project_uid = ?1 AND sync_status = 'pending' ORDER BY created_at ASC",
         )?;
-        let mut rows = stmt.query(params![project_id])?;
+        let mut rows = stmt.query(params![project_uid])?;
         let mut topics = Vec::new();
         while let Some(row) = rows.next()? {
             topics.push(self.row_to_project_topic(row)?);
@@ -811,8 +872,8 @@ impl Repository {
     pub fn sync_project_topic(
         &self,
         id: &str,
-        user_id: &str,
-        project_id: &str,
+        user_uid: &str,
+        project_uid: &str,
         title: &str,
         payload: &str,
         batch_date: Option<&str>,
@@ -825,9 +886,9 @@ impl Repository {
         let now = now();
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "INSERT INTO project_topics (id, user_id, project_id, title, payload, batch_date, source_uid, status, is_deleted, deleted_at, server_version, sync_status, synced_at, created_at, updated_at)
+            "INSERT INTO project_topics (uid, user_uid, project_uid, title, payload, batch_date, source_uid, status, is_deleted, deleted_at, server_version, sync_status, synced_at, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'synced', ?12, ?13, ?14)
-             ON CONFLICT(id) DO UPDATE SET
+             ON CONFLICT(uid) DO UPDATE SET
                 title = excluded.title,
                 payload = excluded.payload,
                 batch_date = excluded.batch_date,
@@ -841,8 +902,8 @@ impl Repository {
                 updated_at = excluded.updated_at",
             params![
                 id,
-                user_id,
-                project_id,
+                user_uid,
+                project_uid,
                 title,
                 payload,
                 batch_date,
@@ -861,23 +922,23 @@ impl Repository {
 
     pub fn mark_project_topic_synced(
         &self,
-        id: &str,
+        uid: &str,
         server_version: i64,
     ) -> SqliteResult<()> {
         let now = now();
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "UPDATE project_topics SET server_version = ?1, sync_status = 'synced', synced_at = ?2, updated_at = ?3 WHERE id = ?4",
-            params![server_version, now, now, id],
+            "UPDATE project_topics SET server_version = ?1, sync_status = 'synced', synced_at = ?2, updated_at = ?3 WHERE uid = ?4",
+            params![server_version, now, now, uid],
         )?;
         Ok(())
     }
 
     fn row_to_project_topic(&self, row: &rusqlite::Row) -> SqliteResult<ProjectTopic> {
         Ok(ProjectTopic {
-            id: row.get("id")?,
-            user_id: row.get("user_id")?,
-            project_id: row.get("project_id")?,
+            id: row.get("uid")?,
+            user_id: row.get("user_uid")?,
+            project_id: row.get("project_uid")?,
             title: row.get("title")?,
             payload: row.get("payload")?,
             batch_date: row.get("batch_date")?,
