@@ -109,11 +109,11 @@ npm run dev:mp-weixin
 
 | 模块 | 功能描述 | 状态 |
 |------|----------|------|
-| **创作** | AI文章生成、图片生成、视频脚本、智能排版、自动配图 | 📋 规划中 |
-| **管理** | 素材库、想法库、知识库、作品管理 | 📋 规划中 |
-| **发布** | 多平台一键发布、定时发布、批量发布 | 📋 规划中 |
-| **运营** | 数据采集、数据分析、AI选题建议、趋势追踪 | 📋 规划中 |
-| **LLM管理** | 供应商管理、模型配置、模型组、速率限制、用量统计 | 📋 规划中 |
+| **创作** | Desktop TipTap editor with an AI writing panel, an image-generator UI, and topic suggestions; agent-core has LLM, image-gen, and content-formatter tools | 🚧 Partial — UI and tools are in the repo; video-script / auto-layout / auto-illustration flows are not clearly complete |
+| **管理** | Desktop project management, account management, drafts, and cloud/local sync (stores, APIs, and a sidecar sync scheduler) | 🚧 Partial — project, account, and sync code landed; a full media/idea/knowledge library is not clearly present |
+| **发布** | Publish center with queue and scheduling UI; YAML-configured adapters for Xiaohongshu, Douyin, WeChat, Weibo, and Bilibili; sidecar publish executor (Playwright / browser-use) | 🚧 Partial — adapters, scheduler, and UI exist; end-to-end production readiness was not verified here |
+| **运营** | Topic recommender in agent-core (NewsNow and TrendRadar providers) plus topic pages in the desktop app | 🚧 Partial — topic suggestion is implemented in code; broader ops analytics / trend tracking is not clearly complete |
+| **LLM管理** | Settings UI for credentials, model selection, and usage stats; agent-core LLM client/config | 🚧 Partial — settings screens exist; supplier / model-group / rate-limit admin is not clearly present in this repo |
 
 ## 相关文档
 
